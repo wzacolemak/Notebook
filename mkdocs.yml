@@ -1,0 +1,96 @@
+site_name: Colemak's Notes
+site_url: https://47.115.211.254:8000
+site_author: colemak
+site_description: colemak's Notes
+repo_url: https://github.com/wzacolemak/Notebook
+
+nav:
+  - Home: index.md
+  - Computer Science: CS/index.md
+  - CTF: 
+    - CTF/index.md
+    - WP: 
+      - SchoolBus: CTF/WP/SchoolBus/index.md
+theme:
+  name: material
+  custom_dir: overrides
+  language: 'zh'
+  palette:
+    - scheme: default # 日间模式
+      primary: indigo # 上方的
+      accent: cyan # 链接等可交互元件的高亮色
+      toggle:
+        icon: material/weather-night # 图标
+        name: 切换至夜间模式 # 鼠标悬浮提示
+    - scheme: slate # 夜间模式
+      primary: black 
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: 切换至日间模式
+  features: 
+    - content.code.annotate
+    - navigation.footer
+    - navigation.instant #- header.autohide  #自动隐藏
+    #- announce.dismiss #呈现可标记为由用户读取的临时公告，可以包含一个用于取消当前公告的按钮
+    - navigation.tracking #地址栏中的 URL 将自动更新为在目录中突出显示的活动锚点
+    - navigation.tabs #顶级部分将呈现在上面视口标题下方的菜单层中，但在移动设备上保持原样
+    - navigation.tabs.sticky  #启用粘性选项卡后，导航选项卡将锁定在标题下方，并在向下滚动时始终保持可见
+    #- navigation.sections #启用部分后，顶级部分在边栏中呈现为1220px以上视口的组，但在移动设备上保持原样
+    - navigation.top # 返回顶部的按钮 在上滑时出现
+    - search.suggest # 搜索输入一些字母时推荐补全整个单词
+    - search.highlight # 搜索出的文章关键词加入高亮
+    #- navigation.expand # 打开Tab时左侧目录全部展开
+    - navigation.indexes #启用节索引页后，可以将文档直接附加到节
+    - search.share #搜索分享按钮
+  icon: 
+    repo: fontawesome/brands/github #右上角图标
+  font: false
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/wzacolemak
+    - icon: fontawesome/solid/envelope
+      link: mailto:<colemak@zju.edu.cn>
+
+plugins:
+  - search
+  - tags
+  - encryptcontent:  # now just for one page, need to be improved
+      password_file: 'password.yml'
+      decryption_failure_message: '密码错误'
+      encrypted_something:
+        mkdocs-encrypted-toc: [nav, class]
+
+markdown_extensions:
+  - toc:
+      permalink: true
+      toc_depth: 4
+  - meta
+  - def_list
+  - attr_list
+  - md_in_html
+  - sane_lists
+  - admonition
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.magiclink
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.tabbed:
+      alternate_style: true 
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.arithmatex:
+      generic: true
