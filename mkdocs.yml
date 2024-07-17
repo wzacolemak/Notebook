@@ -63,6 +63,7 @@ extra:
 plugins:
   - search
   - git-authors
+  - heti
   - tags:
       tags_file: tags.md
   - encryptcontent:  # now just for one page, need to be improved
@@ -74,6 +75,7 @@ plugins:
       enable_creation_date: true
   - statistics:
       page_check_metadata: comment
+  - glightbox
 
 markdown_extensions:
   - toc:

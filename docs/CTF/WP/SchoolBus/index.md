@@ -1,5 +1,5 @@
 ---
 level: secret
-comments: true
+comment: true
 ---
 # ZJU SchoolBus Writeup

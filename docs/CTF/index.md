@@ -1,5 +1,5 @@
 ---
-comments: true
+comment: true
 ---
 # CTF
 !!! Abstract

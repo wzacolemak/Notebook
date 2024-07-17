@@ -2,13 +2,13 @@
 tags:
   - Java
   - Web
-comments: true
+comment: true
 ---
 
 # 1 Java 基础
 
 !!! note
-本文档主要介绍 Java Web 安全相关知识归纳总结，[学习路线参考](https://www.javasec.org/)
+    本文档主要介绍 Java Web 安全相关知识归纳总结，[学习路线参考](https://www.javasec.org/)
 
 ## 1.1 ClassLoader 机制
 
@@ -35,7 +35,7 @@ Java 类均要经过 ClassLoader 加载后才能运行，AppClassLoader 是默�
 
 ## 1.6 JDBC
 
-### 1.6.3 JDBC SQL 注入
+### JDBC SQL 注入
 
 本章节只讨论基于 JDBC 查询的 SQL 注入，暂不讨论基于 ORM 实现的框架注入，也不会过多的讨论注入的深入用法、函数等
 
@@ -122,7 +122,7 @@ pstt.setObject(1, user);
 Java 抽象出来了一个 `URLConnection` 类，它用来表示应用程序以及与 URL 建立通信连接的所有类的超类，通过 URL 类中的 `openConnection` 方法获取到 `URLConnection` 的类对象。
 
 `URLConnection` 支持的协议可以在 `sun.net.www.protocol` 包下找到(jdk_17.0.11)
-![alt text](img/6.png)
+![alt text](img/6.png){width=30%}
 
 其中每个协议都有一个 Handle, Handle 定义了这个协议如何去打开一个连接。
 
@@ -213,8 +213,6 @@ java 中默认对(http|https)做了一些事情，比如:
 
 Java Native Interface (JNI) 是 Java 与本地代码交互的一种技术。Java 语言是基于 C 语言实现的，Java 底层的很多 API 都是通过 JNI 来实现的。通过 JNI 接口 C/C++ 和 Java 可以互相调用(存在跨平台问题)。Java 可以通过 JNI 调用来弥补语言自身的不足(代码安全性、内存操作等)。
 
-### JNI 简介
-
 #### JNI-定义 native 方法
 
 首先在 Java 中如果想要调用 `native` 方法, 那么需要在类中先定义一个 `native` 方法。
@@ -282,3 +280,77 @@ javah 生成的头文件中的函数命名方式是有非常强制性的约束�
 | Long      | Jlong    | long long      | 有符号 64 位 |
 | Float     | Jfloat   | float          | 32 位        |
 | Double    | Jdouble  | double         | 64 位        |
+
+#### JNI-编写C/C++本地命令执行实现
+
+接下来使用C/C++编写函数的最终实现代码。
+`xxx_xxx_CommandExecution.cpp`示例：
+```cpp
+#include <iostream>
+#include <stdlib.h>
+#include <cstring>
+#include <string>
+#include "xxx_xxx_CommandExecution.h"
+
+using namespace std;
+
+JNIEXPORT jstring
+
+JNICALL Java_xxx_xxx_CommandExecution_exec
+        (JNIEnv *env, jclass jclass, jstring str) {
+
+    if (str != NULL) {
+        jboolean jsCopy;
+        // 将jstring参数转成char指针
+        const char *cmd = env->GetStringUTFChars(str, &jsCopy);
+
+        // 使用popen函数执行系统命令
+        FILE *fd  = popen(cmd, "r");
+
+        if (fd != NULL) {
+            // 返回结果字符串
+            string result;
+
+            // 定义字符串数组
+            char buf[128];
+
+            // 读取popen函数的执行结果
+            while (fgets(buf, sizeof(buf), fd) != NULL) {
+                // 拼接读取到的结果到result
+                result +=buf;
+            }
+
+            // 关闭popen
+            pclose(fd);
+
+            // 返回命令执行结果给Java
+            return env->NewStringUTF(result.c_str());
+        }
+
+    }
+
+    return NULL;
+}
+```
+
+- Linux编译：
+  ```g++ -fPIC -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/darwin" -shared -o libcmd.jnilib com_anbai_sec_cmd_CommandExecution.cpp```
+- Windows编译：
+  ```g++ -I"%JAVA_HOME%\include" -I"%JAVA_HOME%\include\win32" -shared -o cmd.dll com_anbai_sec_cmd_CommandExecution.cpp```
+
+编译参考[Java Programming Tutorial Java Native Interface (JNI)](https://www3.ntu.edu.sg/home/ehchua/programming/java/JavaNativeInterface.html)
+
+## 1.9 Java 动态代理
+
+Java反射提供了一种类动态代理机制，可以通过代理接口实现类来完成程序无侵入式扩展。
+Java动态代理主要使用场景：
+
+- 统计方法执行所耗时间。
+- 在方法执行前后添加日志。
+- 检测方法的参数或返回值。
+- 方法访问权限控制。
+- 方法Mock测试。
+
+### 动态代理API
+
+创建动态代理类
