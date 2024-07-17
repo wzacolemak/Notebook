@@ -6,7 +6,11 @@ repo_url: https://github.com/wzacolemak/Notebook
 
 nav:
   - Home: index.md
-  - Computer Science: CS/index.md
+  - Computer Science:
+    - CS/index.md
+    - Java:
+      - JavaSec:
+        - CS/Java/JavaSec/java_fund.md
   - CTF: 
     - CTF/index.md
     - WP: 
@@ -45,6 +49,7 @@ theme:
     - search.share #搜索分享按钮
   icon: 
     repo: fontawesome/brands/github #右上角图标
+    annotation: material/plus-circle-outline #注释图标
   font: false
 
 extra:
@@ -57,18 +62,23 @@ extra:
 
 plugins:
   - search
-  - tags
+  - git-authors
+  - tags:
+      tags_file: tags.md
   - encryptcontent:  # now just for one page, need to be improved
       password_file: 'password.yml'
       decryption_failure_message: '密码错误'
       encrypted_something:
         mkdocs-encrypted-toc: [nav, class]
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - statistics:
+      page_check_metadata: comment
 
 markdown_extensions:
   - toc:
       permalink: true
       toc_depth: 4
-  - meta
   - def_list
   - attr_list
   - md_in_html
@@ -83,9 +93,10 @@ markdown_extensions:
   - pymdownx.magiclink
   - pymdownx.superfences
   - pymdownx.inlinehilite
+  - pymdownx.smartsymbols
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.tabbed:
       alternate_style: true 
   - pymdownx.tasklist:
@@ -94,3 +105,9 @@ markdown_extensions:
       anchor_linenums: true
   - pymdownx.arithmatex:
       generic: true
+  - meta
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
