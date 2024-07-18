@@ -2,20 +2,31 @@ site_name: Colemak's Notes
 site_url: https://47.115.211.254:8000
 site_author: colemak
 site_description: colemak's Notes
+repo_name: colemak/Notebook
 repo_url: https://github.com/wzacolemak/Notebook
 
 nav:
   - Home: index.md
   - Computer Science:
     - CS/index.md
-    - Java:
-      - JavaSec:
-        - CS/Java/JavaSec/java_fund.md
+    - 编程语言:
+      - Java:
+        - JavaSec:
+          - CS/PL/Java/JavaSec/java_fund.md
+      - PHP: 
+        - CS/PL/PHP/index.md
   - CTF: 
     - CTF/index.md
     - WP: 
       - SchoolBus: CTF/WP/SchoolBus/index.md
 theme:
+  font:
+    text: LXGW WenKai Screen
+    code: JetBrains Mono
+  icon: 
+    logo: material/notebook-outline #左上角图标
+    annotation: material/plus-circle-outline #注释图标
+  favicon: assets/favicon.png
   name: material
   custom_dir: overrides
   language: 'zh'
@@ -47,12 +58,9 @@ theme:
     #- navigation.expand # 打开Tab时左侧目录全部展开
     - navigation.indexes #启用节索引页后，可以将文档直接附加到节
     - search.share #搜索分享按钮
-  icon: 
-    repo: fontawesome/brands/github #右上角图标
-    annotation: material/plus-circle-outline #注释图标
-  font: false
 
 extra:
+  homepage: http://47.115.211.254:8000
   generator: false
   social:
     - icon: fontawesome/brands/github
@@ -74,7 +82,7 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
   - statistics:
-      page_check_metadata: comment
+      page_check_metadata: comments
   - glightbox
 
 markdown_extensions:
@@ -99,6 +107,9 @@ markdown_extensions:
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
+      options:
+        custom_icons:
+          - overrides/.icons
   - pymdownx.tabbed:
       alternate_style: true 
   - pymdownx.tasklist:
@@ -113,3 +124,6 @@ extra_javascript:
   - javascripts/mathjax.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - https://gcore.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css

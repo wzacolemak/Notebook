@@ -1,4 +1,4 @@
 ---
-comment: True
+comments: True
 ---
 # Computer Science
