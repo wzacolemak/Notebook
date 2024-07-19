@@ -19,6 +19,11 @@ nav:
     - CTF/index.md
     - WP: 
       - SchoolBus: CTF/WP/SchoolBus/index.md
+  - Security:
+    - 漏洞复现:
+      - Web:
+        - 反序列化:
+          - Common Collections: Sec/Vul/Web/Deserial/ACC.md
 theme:
   font:
     text: LXGW WenKai Screen
