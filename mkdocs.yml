@@ -13,17 +13,23 @@ nav:
       - Java:
         - JavaSec:
           - CS/PL/Java/JavaSec/java_fund.md
-      - PHP: 
-        - CS/PL/PHP/index.md
+          - CS/PL/Java/JavaSec/java_asm.md
   - CTF: 
     - CTF/index.md
     - WP: 
       - SchoolBus: CTF/WP/SchoolBus/index.md
   - Security:
-    - 漏洞复现:
-      - Web:
-        - 反序列化:
-          - Common Collections: Sec/Vul/Web/Deserial/ACC.md
+    - Sec/index.md
+    - CVE: Sec/CVE.md
+    - Web:
+      - 反序列化:
+        - Common Collections: Sec/Web/Deserial/ACC.md
+        - JNDI 注入: Sec/Web/Deserial/JNDI.md
+      - SSTI 模板注入:
+        - Sec/Web/SSTI/index.md
+        - Twig: Sec/Web/SSTI/twig.md
+        - Smarty: Sec/Web/SSTI/smarty.md
+
 theme:
   font:
     text: LXGW WenKai Screen
@@ -34,7 +40,7 @@ theme:
   favicon: assets/favicon.png
   name: material
   custom_dir: overrides
-  language: 'zh'
+  language: zh
   palette:
     - scheme: default # 日间模式
       primary: indigo # 上方的
@@ -50,6 +56,7 @@ theme:
         name: 切换至日间模式
   features: 
     - content.code.annotate
+    - content.code.copy
     - navigation.footer
     - navigation.instant #- header.autohide  #自动隐藏
     #- announce.dismiss #呈现可标记为由用户读取的临时公告，可以包含一个用于取消当前公告的按钮
@@ -75,7 +82,6 @@ extra:
 
 plugins:
   - search
-  - git-authors
   - heti
   - tags:
       tags_file: tags.md
@@ -85,10 +91,16 @@ plugins:
       encrypted_something:
         mkdocs-encrypted-toc: [nav, class]
   - git-revision-date-localized:
+      type: datetime
+      timezone: Asia/Shanghai
+      locale: zh
       enable_creation_date: true
+      exclude:
+        - index.md
   - statistics:
       page_check_metadata: comments
-  - glightbox
+  - glightbox:
+      width: 80%
 
 markdown_extensions:
   - toc:
@@ -126,9 +138,10 @@ markdown_extensions:
   - meta
 
 extra_javascript:
-  - javascripts/mathjax.js
+  - https://cdn.tonycrane.cc/utils/katex.min.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
-  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  - js/katex.js
 
 extra_css:
+  - https://cdn.tonycrane.cc/utils/katex.min.css
   - https://gcore.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css

