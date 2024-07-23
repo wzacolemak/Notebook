@@ -13,7 +13,11 @@ nav:
       - Java:
         - JavaSec:
           - CS/PL/Java/JavaSec/java_fund.md
+          - CS/PL/Java/JavaSec/java_web.md
+          - CS/PL/Java/JavaSec/java_web_vul.md
+          - CS/PL/Java/JavaSec/java_ram_webshell.md
           - CS/PL/Java/JavaSec/java_asm.md
+          - CS/PL/Java/JavaSec/java_json.md
   - CTF: 
     - CTF/index.md
     - WP: 
@@ -99,8 +103,7 @@ plugins:
         - index.md
   - statistics:
       page_check_metadata: comments
-  - glightbox:
-      width: 80%
+  - glightbox
 
 markdown_extensions:
   - toc:
@@ -118,7 +121,11 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.snippets
   - pymdownx.magiclink
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite
   - pymdownx.smartsymbols
   - pymdownx.emoji:
