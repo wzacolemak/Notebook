@@ -8,3 +8,5 @@ comments: true
 - [ ] java bytebuddy 用法
 - [ ] CVE-2021-26120 复现
 - [ ] Agent破解license
+- [ ] SQL注入
+- [ ] XSS

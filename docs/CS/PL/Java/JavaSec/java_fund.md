@@ -38,7 +38,7 @@ Java 类均要经过 ClassLoader 加载后才能运行，AppClassLoader 是默�
 ## 1.2 Java 反射
 Java反射(`Reflection`)是Java非常重要的动态特性，通过使用反射我们不仅可以获取到任何类的成员方法(`Methods`)、成员变量(`Fields`)、构造方法(`Constructors`)等信息，还可以动态创建Java类实例、调用任意的类方法、修改任意的类成员变量值等。Java反射机制是Java语言的动态性的重要体现，也是Java的各种框架底层实现的灵魂。
 
-## 获取Class对象
+### 获取Class对象
 
 Java反射操作的是`java.lang.Class`对象，所以我们需要先想办法获取到Class对象，通常我们有如下几种方式获取一个类的Class对象：
 
@@ -64,7 +64,7 @@ Class  runtimeClass3 = ClassLoader.getSystemClassLoader().loadClass(className);
 
 通过以上任意一种方式就可以获取`java.lang.Runtime`类的Class对象了，反射调用内部类的时候需要使用`$`来代替`.`,如`cc.Test`类有一个叫做`Hello`的内部类，那么调用的时候就应该将类名写成：`cc.Test$Hello`。
 
-## 反射java.lang.Runtime
+### 反射java.lang.Runtime
 
 `java.lang.Runtime`因为有一个`exec`方法可以执行本地命令，所以在很多的`payload`中我们都能看到反射调用`Runtime`类来执行本地系统命令，通过学习如何反射`Runtime`类也能让我们理解反射的一些基础用法。
 
@@ -137,7 +137,7 @@ public class Runtime {
 
 获取到`Constructor`以后我们可以通过`constructor.newInstance()`来创建类实例,同理如果有参数的情况下我们应该传入对应的参数值，如:`constructor.newInstance("admin", "123456")`。当我们没有访问构造方法权限时我们应该调用`constructor.setAccessible(true)`修改访问权限就可以成功的创建出类实例了。
 
-## 反射调用类方法
+### 反射调用类方法
 
 `Class`对象提供了一个获取某个类的所有的成员方法的方法，也可以通过方法名和方法参数类型来获取指定成员方法。
 
@@ -170,7 +170,7 @@ method.invoke(方法实例对象, 方法参数值，多个参数值用","隔开)
 
 `method.invoke`的第二个参数不是必须的，如果当前调用的方法没有参数，那么第二个参数可以不传，如果有参数那么就必须严格的`依次传入对应的参数类型`。
 
-## 反射调用成员变量
+### 反射调用成员变量
 
 Java反射不但可以获取类所有的成员变量名称，还可以无视权限修饰符实现修改对应的值。
 
@@ -218,7 +218,7 @@ modifiers.setInt(field, field.getModifiers() & ~Modifier.FINAL);
 field.set(类实例对象, 修改后的值);
 ```
 
-## Java反射机制总结
+### Java反射机制总结
 
 Java反射机制是Java动态性中最为重要的体现，利用反射机制我们可以轻松的实现Java类的动态调用。Java的大部分框架都是采用了反射机制来实现的(如:`Spring MVC`、`ORM框架`等)，Java反射在编写漏洞利用代码、代码审计、绕过RASP方法限制等中起到了至关重要的作用。
 

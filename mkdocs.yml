@@ -26,10 +26,14 @@ nav:
     - Sec/index.md
     - CVE: Sec/CVE.md
     - Web:
+      - SQL注入:
+        - Sec/Web/SQL/index.md
+      - XSS:
+        - Sec/Web/XSS/index.md
       - 反序列化:
         - Common Collections: Sec/Web/Deserial/ACC.md
         - JNDI 注入: Sec/Web/Deserial/JNDI.md
-      - SSTI 模板注入:
+      - SSTI:
         - Sec/Web/SSTI/index.md
         - Twig: Sec/Web/SSTI/twig.md
         - Smarty: Sec/Web/SSTI/smarty.md
