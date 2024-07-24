@@ -11,13 +11,15 @@ nav:
     - CS/index.md
     - 编程语言:
       - Java:
-        - JavaSec:
+        - Java Security:
           - CS/PL/Java/JavaSec/java_fund.md
           - CS/PL/Java/JavaSec/java_web.md
           - CS/PL/Java/JavaSec/java_web_vul.md
           - CS/PL/Java/JavaSec/java_ram_webshell.md
           - CS/PL/Java/JavaSec/java_asm.md
           - CS/PL/Java/JavaSec/java_json.md
+        - Java Tool:
+          - CS/PL/Java/Jtool/Jtools.md
   - CTF: 
     - CTF/index.md
     - WP: 
@@ -31,6 +33,7 @@ nav:
       - XSS:
         - Sec/Web/XSS/index.md
       - 反序列化:
+        - Sec/Web/Deserial/index.md
         - Common Collections: Sec/Web/Deserial/ACC.md
         - JNDI 注入: Sec/Web/Deserial/JNDI.md
       - SSTI:

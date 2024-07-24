@@ -2,6 +2,7 @@
 comments: true
 tags:
     - Web Sec
+    - Java
 ---
 # Apache Commons Collections反序列化漏洞
 
@@ -427,4 +428,3 @@ public class cc1 {
 ```
 
 ## 2 CC1-LazyMap
-
