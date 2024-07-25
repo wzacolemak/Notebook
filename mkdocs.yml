@@ -18,8 +18,7 @@ nav:
           - CS/PL/Java/JavaSec/java_ram_webshell.md
           - CS/PL/Java/JavaSec/java_asm.md
           - CS/PL/Java/JavaSec/java_json.md
-        - Java Tool:
-          - CS/PL/Java/Jtool/Jtools.md
+        - Java Tool: CS/PL/Java/Jtool/Jtools.md
   - CTF: 
     - CTF/index.md
     - WP: 
@@ -35,7 +34,7 @@ nav:
       - 反序列化:
         - Sec/Web/Deserial/index.md
         - Common Collections: Sec/Web/Deserial/ACC.md
-        - JNDI 注入: Sec/Web/Deserial/JNDI.md
+      - JNDI 注入: Sec/Web/JNDI/JNDI.md
       - SSTI:
         - Sec/Web/SSTI/index.md
         - Twig: Sec/Web/SSTI/twig.md

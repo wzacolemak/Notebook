@@ -10,6 +10,11 @@ comments: true
 !!! note
     本文档主要介绍 Java Web 安全相关知识归纳总结，[学习路线参考](https://www.javasec.org/){target="_blank"}
 
+    主要代码示例基于 JDK 7u80，部分代码采用 JDK 22.0.1
+
+    推荐使用 Java Tools 中的[JEnv]([/CS/PL/Java/Jtool/Jtools](/CS/PL/Java/Jtool/Jtools/#jenv-for-windows)) 进行版本管理（也有对应的linux/MacOS版本）
+
+
 ## 1.1 ClassLoader 机制
 
 JVM 架构图:
@@ -68,9 +73,9 @@ Class  runtimeClass3 = ClassLoader.getSystemClassLoader().loadClass(className);
 
 `java.lang.Runtime`因为有一个`exec`方法可以执行本地命令，所以在很多的`payload`中我们都能看到反射调用`Runtime`类来执行本地系统命令，通过学习如何反射`Runtime`类也能让我们理解反射的一些基础用法。
 
-=== 不使用反射执行本地命令
+=== "不使用反射执行本地命令"
 
-    ??? example
+    !!! example
 
         ```java
         // 输出命令执行结果
@@ -79,9 +84,9 @@ Class  runtimeClass3 = ClassLoader.getSystemClassLoader().loadClass(className);
 
     如上可以看到，我们可以使用一行代码完成本地命令执行操作，但是如果使用反射就会比较麻烦了，我们不得不需要间接性的调用`Runtime`的`exec`方法。
 
-=== 反射Runtime执行本地命令代码片段
+=== "反射Runtime执行本地命令代码片段"
 
-    ??? example
+    !!! example
 
         ```java
         // 获取Runtime类对象
@@ -312,7 +317,59 @@ Google的GSON库在JSON反序列化的时候就使用这个方式来创建类实
 [Todo](/todo)
 
 ## 1.5 本地命令执行
-[Todo](/todo)
+
+Java原生提供了对本地系统命令执行的支持，黑客通常会RCE或者WebShell来执行系统终端命令控制服务器
+
+### Runtime 命令执行
+
+在Java中我们通常会使用java.lang.Runtime类的exec方法来执行本地系统命令。
+
+**Runtime.exec(xxx)调用链如下:**
+
+```java
+java.lang.UNIXProcess.<init>(UNIXProcess.java:247)
+java.lang.ProcessImpl.start(ProcessImpl.java:134)
+java.lang.ProcessBuilder.start(ProcessBuilder.java:1029)
+java.lang.Runtime.exec(Runtime.java:620)
+java.lang.Runtime.exec(Runtime.java:450)
+java.lang.Runtime.exec(Runtime.java:347)
+org.apache.jsp.runtime_002dexec2_jsp._jspService(runtime_002dexec2_jsp.java:118)
+```
+
+通过观察整个调用链我们可以清楚的看到exec方法并不是命令执行的最终点，执行逻辑大致是：
+
+1. Runtime.exec(xxx)
+2. java.lang.ProcessBuilder.start()
+3. new java.lang.UNIXProcess(xxx)
+4. UNIXProcess构造方法中调用了forkAndExec(xxx) native方法。
+5. forkAndExec调用操作系统级别fork->exec(*nix)/CreateProcess(Windows)执行命令并返回fork/CreateProcess的PID。
+
+!!! tips
+    Runtime和ProcessBuilder并不是程序的最终执行点
+
+如果系统对runtime有相应检测防护机制，可以通过反射来绕过检测
+
+### ProcessBuilder命令执行
+
+注意到 Runtime.exec会调用ProcessBuilder.start()，所以我们可以直接使用ProcessBuilder来执行命令。
+
+???+ example
+
+    ```java
+    InputStream in = new ProcessBuilder(request.getParameterValues("cmd")).start().getInputStream();
+    ```
+
+    输入请求`http://localhost:8080/process_builder.jsp?cmd=/bin/sh&cmd=-c&cmd=cd%20/Users/;ls%20-la`
+
+### UNIXProcess/ProcessImpl
+
+UNIXProcess和ProcessImpl可以理解本就是一个东西，因为在JDK9的时候把UNIXProcess合并到了ProcessImpl当中。ProcessImpl其实就是最终调用native执行系统命令的类，这个类提供了一个叫forkAndExec的native方法，如方法名所述主要是通过fork&exec来执行本地系统命令。
+
+![alt text](img/proimpl.png){loading=lazy}
+
+### JNI命令执行
+
+Java可以通过JNI的方式调用动态链接库，只需要在动态链接库中写本地命令执行即可
 
 ## 1.6 JDBC
 
@@ -1629,22 +1686,107 @@ JRMP接口的两种常见实现方式：
 
 ## 1.12 JNDI
 
-JNDI(Java Naming and Directory Interface)是Java提供的`Java 命名和目录接口`。通过调用JNDI的API应用程序可以定位资源和其他程序对象。JNDI是Java EE的重要部分，需要注意的是它并不只是包含了DataSource(JDBC 数据源)，JNDI可访问的现有的目录及服务有:JDBC、LDAP、RMI、DNS、NIS、CORBA。
+JNDI(Java Naming and Directory Interface,Java命名和目录接口)是SUN公司提供的一种标准的Java命名系统接口，JNDI提供统一的客户端API，通过不同的访问提供者接口JNDI服务供应接口(SPI)的实现，由管理者将JNDI API映射为特定的命名服务和目录系统，使得Java应用程序可以和这些命名服务和目录服务之间进行交互。目录服务是命名服务的一种自然扩展。
 
-**Naming Service 命名服务**：
+JNDI(Java Naming and Directory Interface)是一个应用程序设计的API，为开发人员提供了查找和访问各种命名和目录服务的通用、统一的接口，类似JDBC都是构建在抽象层上。现在JNDI已经成为J2EE的标准之一，所有的J2EE容器都必须提供一个JNDI的服务。
 
-命名服务将名称和对象进行关联，提供通过名称找到对象的操作，例如：DNS系统将计算机名和IP地址进行关联、文件系统将文件名和文件句柄进行关联等等。
+JNDI可访问的现有的目录及服务有：
+DNS、XNam 、Novell目录服务、LDAP(Lightweight Directory Access Protocol轻型目录访问协议)、 CORBA对象服务、文件系统、Windows XP/2000/NT/Me/9x的注册表、RMI、DSML v1&v2、NIS。
 
-**Directory Service 目录服务**：
 
-目录服务是命名服务的扩展，除了提供名称和对象的关联，还允许对象具有属性。目录服务中的对象称之为目录对象。目录服务提供创建、添加、删除目录对象以及修改目录对象属性等操作。
+### InitialContext
 
-**Reference 引用**：
+```java title="构造方法"
+InitialContext() 
+// 构建一个初始上下文。  
+InitialContext(boolean lazy) 
+// 构造一个初始上下文，并选择不初始化它。  
+InitialContext(Hashtable<?,?> environment) 
+// 使用提供的环境构建初始上下文。 
+```
 
-在一些命名服务系统中，系统并不是直接将对象存储在系统中，而是保持对象的引用。引用包含了如何访问实际对象的信息。
+```java title="常用方法"
+bind(Name name, Object obj) 
+	// 将名称绑定到对象。 
+list(String name) 
+	// 枚举在命名上下文中绑定的名称以及绑定到它们的对象的类名。
+lookup(String name) 
+	// 检索命名对象。 
+rebind(String name, Object obj) 
+	// 将名称绑定到对象，覆盖任何现有绑定。 
+unbind(String name) 
+	// 取消绑定命名对象。 
+```
+### Reference
 
-更多JNDI相关概念参考: [Java技术回顾之JNDI：命名和目录服务基本概念](https://blog.csdn.net/ericxyy/article/details/2012287){target="_blank"}
+该类表示对在命名/目录系统外部找到的对象的引用。提供了JNDI中类的引用功能，比如在某些目录服务中直接引用远程的Java对象。
 
+```java title="构造方法"
+Reference(String className) 
+	// 为类名为“className”的对象构造一个新的引用。  
+Reference(String className, RefAddr addr) 
+	// 为类名为“className”的对象和地址构造一个新引用。  
+Reference(String className, RefAddr addr, String factory, String factoryLocation) 
+	// 为类名为“className”的对象，对象工厂的类名和位置以及对象的地址构造一个新引用。  
+Reference(String className, String factory, String factoryLocation) 
+	// 为类名为“className”的对象以及对象工厂的类名和位置构造一个新引用。  
+```
+
+```java title="常用方法"
+void add(int posn, RefAddr addr) 
+	将地址添加到索引posn的地址列表中。  
+void add(RefAddr addr) 
+	将地址添加到地址列表的末尾。  
+void clear() 
+	从此引用中删除所有地址。  
+RefAddr get(int posn) 
+	检索索引posn上的地址。  
+RefAddr get(String addrType) 
+	检索地址类型为“addrType”的第一个地址。  
+Enumeration<RefAddr> getAll() 
+	检索本参考文献中地址的列举。  
+String getClassName() 
+	检索引用引用的对象的类名。  
+String getFactoryClassLocation() 
+	检索此引用引用的对象的工厂位置。  
+String getFactoryClassName() 
+	检索此引用引用对象的工厂的类名。    
+Object remove(int posn) 
+	从地址列表中删除索引posn上的地址。  
+int size() 
+	检索此引用中的地址数。  
+String toString() 
+	生成此引用的字符串表示形式。  
+```
+??? example
+
+    ```java
+    package com.rmi.demo;
+
+    import com.sun.jndi.rmi.registry.ReferenceWrapper;
+
+
+    import javax.naming.NamingException;
+    import javax.naming.Reference;
+    import java.rmi.AlreadyBoundException;
+    import java.rmi.RemoteException;
+    import java.rmi.registry.LocateRegistry;
+    import java.rmi.registry.Registry;
+
+    public class jndi {
+        public static void main(String[] args) throws NamingException, RemoteException, AlreadyBoundException {
+            String url = "http://127.0.0.1:8080"; 
+            Registry registry = LocateRegistry.createRegistry(1099);
+            Reference reference = new Reference("test", "test", url);
+            ReferenceWrapper referenceWrapper = new ReferenceWrapper(reference);
+            registry.bind("aa",referenceWrapper);
+
+
+        }
+    }
+    ```
+    Reference并没有实现Remote接口也没有继承 UnicastRemoteObject类，RMI需要将类注册到Registry需要实现Remote和继承UnicastRemoteObject类，所以这里还需要调用ReferenceWrapper进行封装。
+    
 ### JNDI 目录服务
 
 访问JNDI目录服务时会通过预先设置好环境变量访问对应的服务， 如果创建JNDI上下文(Context)时未指定环境变量对象，JNDI会自动搜索系统属性(`System.getProperty()`)、`applet` 参数和应用程序资源文件(`jndi.properties`)
@@ -1676,7 +1818,7 @@ JNDI(Java Naming and Directory Interface)是Java提供的`Java 命名和目录�
 4. **JNDI-DataSource**
    JNDI连接数据源比较特殊，Java目前不提供内置的实现方法，提供数据源服务的多是Servlet容器，以Tomcat为例，参考[Tomcat JNDI Datasource](https://tomcat.apache.org/tomcat-8.0-doc/jndi-datasource-examples-howto.html){target="_blank"}
 
-### JNDI-协议转换
+**JNDI-协议转换**
 
 如果`JNDI`在`lookup`时没有指定初始化工厂名称，会自动根据协议类型动态查找内置的工厂类然后创建处理对应的服务请求。
 
@@ -1692,11 +1834,8 @@ JNDI(Java Naming and Directory Interface)是Java提供的`Java 命名和目录�
 | IIOP对象请求代理协议 | `iiopname://`  | `com.sun.jndi.url.iiopname.iiopnameURLContextFactory`   |
 | IIOP对象请求代理协议 | `corbaname://` | `com.sun.jndi.url.corbaname.corbanameURLContextFactory` |
 
-### JNDI-Reference
 
-在JNDI服务中允许使用系统以外的对象，比如在某些目录服务中直接引用远程的Java对象，但遵循一些安全限制。
-
-#### RMI/LDAP远程对象引用安全限制
+### RMI/LDAP远程对象引用安全限制
 
 在RMI服务中引用远程对象将受本地Java环境限制即本地的`java.rmi.server.useCodebaseOnly`配置必须为false(允许加载远程对象)，如果该值为true则禁止引用远程对象。除此之外被引用的ObjectFactory对象还将受到`com.sun.jndi.rmi.object.trustURLCodebase`配置限制，如果该值为false(不信任远程引用对象)一样无法调用远程的引用对象。
 
@@ -1712,7 +1851,7 @@ LDAP在JDK 11.0.1、8u191、7u201、6u211后也将默认的`com.sun.jndi.ldap.ob
 
 高版本JDK可参考：[如何绕过高版本 JDK 的限制进行 JNDI 注入利用](https://paper.seebug.org/942/){target="_blank"}
 
-JNDI 注入漏洞参考：[JNDI 注入漏洞](/Sec/Web/Deserial/JNDI/#JNDI-注入漏洞)
+JNDI 注入漏洞参考：[JNDI 注入漏洞](/Sec/Web/JNDI/JNDI)
 
 ## 1.13 JShell
 
