@@ -603,3 +603,62 @@ public class ObjectInputStream extends InputStream implements ObjectInput, Objec
 
 使用RASP检测反序列化攻击，可以不用受制于请求协议、服务、框架等，检测规则可实时更新，从而程度上实现反序列化攻击防御。
 
+## 3.6 本地命令执行
+
+### 本地命令执行攻击
+
+参考[Java基础：命令执行](/CS/PL/Java/JavaSec/java_fund/#15)
+
+### RASP 防御
+
+在Java底层执行系统命令的API是`java.lang.UNIXProcess/ProcessImpl#forkAndExec`方法，`forkAndExec`是一个native方法，如果想要Hook该方法需要使用Agent机制中的`Can-Set-Native-Method-Prefix`，为`forkAndExec`设置一个别名，如：`__RASP__forkAndExec`，然后重写`__RASP__forkAndExec`方法逻辑，即可实现对原`forkAndExec`方法Hook。
+
+<figure markdown="span">
+    ![alt text](img/localcmd.png)
+    <figcaption>Java本地命令执行API</figcaption>
+</figure>
+
+```java title="Hook forkAndExec"
+@RASPMethodHook(
+      className = "java.lang.ProcessImpl", methodName = CONSTRUCTOR_INIT,
+      methodArgsDesc = ".*", methodDescRegexp = true
+)
+public static class ProcessImplHook extends RASPMethodAdvice {
+
+   @Override
+   public RASPHookResult<?> onMethodEnter() {
+      try {
+         String[] commands = null;
+
+         // JDK9+的API参数不一样！
+         if (getArg(0) instanceof String[]) {
+            commands = getArg(0);
+         } else if (getArg(0) instanceof byte[]) {
+            commands = new String[]{new String((byte[]) getArg(0))};
+         }
+
+         // 检测执行的命令合法性
+         return LocalCommandHookHandler.processCommand(commands, getThisObject(), this);
+      } catch (Exception e) {
+         RASPLogger.log(AGENT_NAME + "处理ProcessImpl异常:" + e, e);
+      }
+
+      return new RASPHookResult<?>(RETURN);
+   }
+
+}
+```
+
+**请求参数关联分析**
+
+获取到本地命令执行的参数后需要与Http请求的参数进行关联分析，检测当前执行的系统命令是否与请求参数相关，如果确认当前执行的系统命令来源于Http请求参数，那么RASP会立即阻止命令执行并阻断Http请求。
+
+**限制执行本地系统命令**
+
+因为本地命令执行的危害性极大，所以在默认情况下可以直接禁止本地命令执行，如果业务的确有必要开启那么可以对相应的业务URL做白名单。限制的方式可分为两种类型：
+
+1. 完全限制本地命令执行，禁止在Java中执行任何命令；
+2. 允许程序内部的本地命令执行，只在有Http请求的时候才禁止执行命令；
+
+这两种类型的禁止方案为可选方案，可在RASP的云端实时配置。
+

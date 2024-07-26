@@ -314,7 +314,27 @@ Google的GSON库在JSON反序列化的时候就使用这个方式来创建类实
     Java 11开始Unsafe类移除了`defineClass`方法(`defineAnonymousClass`方法还在)。
 
 ## 1.4 Java 文件系统
-[Todo](/todo)
+
+在Java SE中内置了两类文件系统：`java.io`和`java.nio`，`java.nio`的实现是`sun.nio`，文件系统底层的API实现如下图：
+
+![alt text](img/filesys.png)
+
+### java.io
+
+Java抽象出了一个叫做文件系统的对象:`java.io.FileSystem`，不同的操作系统有不一样的文件系统,例如`Windows`和`Unix`就是两种不一样的文件系统： `java.io.UnixFileSystem`、`java.io.WinNTFileSystem`。
+
+FileSystem 最终会通过JNI调用native方法来实现对文件的操作
+
+!!! tips
+
+    1. 并不是所有的文件操作都在`java.io.FileSystem`中定义,文件的读取最终调用的是`java.io.FileInputStream#read0、readBytes`、`java.io.RandomAccessFile#read0、readBytes`,而写文件调用的是`java.io.FileOutputStream#writeBytes`、`java.io.RandomAccessFile#write0`。
+    2.  Java有两类文件系统API！一个是基于`阻塞模式的IO`的文件系统，另一是JDK7+基于`NIO.2`的文件系统。
+
+### java.nio
+
+Java 7提出了一个基于NIO的文件系统，这个NIO文件系统和阻塞IO文件系统两者是完全独立的。`java.nio.file.spi.FileSystemProvider`对文件的封装和`java.io.FileSystem`同理。
+
+合理的利用NIO文件系统这一特性我们可以绕过某些只是防御了`java.io.FileSystem`的`WAF`/`RASP`
 
 ## 1.5 本地命令执行
 

