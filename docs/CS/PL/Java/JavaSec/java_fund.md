@@ -802,6 +802,7 @@ Proxy类中定义的方法如下：
         //向指定的类加载器中定义一个类对象
         private static native Class defineClass0(ClassLoader loader, String name, byte[] b, int off, int len)
     }
+    ```
 
 `java.lang.reflect.InvocationHandler`接口用于调用`Proxy`类生成的代理类方法，该类只有一个`invoke`方法。
 
@@ -1019,8 +1020,8 @@ java.lang.reflect.Proxy类通过创建一个新的Java类(类名为com.sun.proxy
 2. 动态代理类由`java.lang.reflect.Proxy.ProxyClassFactory`创建。
 3. `ProxyClassFactory`调用`sun.misc.ProxyGenerator`类生成该类的字节码，并调用`java.lang.reflect.Proxy.defineClass0()`方法将该类注册到JVM。
 4. 该类继承于`java.lang.reflect.Proxy`并实现了需要被代理的接口类，因为`java.lang.reflect.Proxy`类实现了`java.io.Serializable`接口，所以被代理的类支持序列化/反序列化。
-5. 该类实现了代理接口类，会通过`ProxyGenerator`动态生成接口类的所有方法，
-6. 该类因为实现了代理的接口类，所以当前类是代理的接口类的实例(`proxyInstance instanceof FileSystem`为true)，但不是代理接口类的实现类的实例(`proxyInstance instanceof UnixFileSystem`为false)。
+5. 通过`ProxyGenerator`动态生成接口类的所有方法
+6. 因为实现了代理的接口类，所以当前类是代理的接口类的实例(`proxyInstance instanceof FileSystem`为true)，但不是代理接口类的实现类的实例(`proxyInstance instanceof UnixFileSystem`为false)。
 7. 该类方法中包含了被代理的接口类的所有方法，通过调用动态代理处理类(`InvocationHandler`)的invoke方法获取方法执行结果。
 8. 该类代理的方式重写了`java.lang.Object`类的`toString`、`hashCode`、`equals`方法。
 9. 如果动过动态代理生成了多个动态代理类，新生成的类名中的数字会自增，如`com.sun.proxy.$Proxy0/$Proxy1/$Proxy2`。

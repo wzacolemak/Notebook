@@ -16,6 +16,8 @@ nav:
           - CS/PL/Java/JavaSec/java_web.md
           - CS/PL/Java/JavaSec/java_web_vul.md
           - CS/PL/Java/JavaSec/java_ram_webshell.md
+          - Struts2 漏洞: 
+            - CS/PL/Java/JavaSec/Struts2/index.md
           - CS/PL/Java/JavaSec/java_asm.md
           - CS/PL/Java/JavaSec/java_json.md
         - Java Tool: CS/PL/Java/Jtool/Jtools.md
@@ -109,6 +111,8 @@ plugins:
       exclude:
         - index.md
   - statistics:
+      words_per_minute: 200
+      codelines_per_minute: 60
       page_check_metadata: comments
   - glightbox
 

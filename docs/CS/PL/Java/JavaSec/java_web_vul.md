@@ -662,3 +662,10 @@ public static class ProcessImplHook extends RASPMethodAdvice {
 
 这两种类型的禁止方案为可选方案，可在RASP的云端实时配置。
 
+## Others
+
+其余漏洞介绍篇幅过长，不适合在此展开，请参考以下链接：
+
+- [Fastjson 反序列化漏洞](/Sec/Web/Deserial/Fastjson)
+- [Struts2 漏洞](../Struts2)
+- [Shiro 漏洞](../Shiro)
