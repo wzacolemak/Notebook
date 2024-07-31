@@ -37,6 +37,7 @@ nav:
         - Sec/Web/Deserial/index.md
         - Common Collections: Sec/Web/Deserial/ACC.md
         - Fastjson: Sec/Web/Deserial/Fastjson.md
+        - JDK7u21: Sec/Web/Deserial/JDK7u21.md
       - JNDI 注入: Sec/Web/JNDI/JNDI.md
       - SSTI:
         - Sec/Web/SSTI/index.md

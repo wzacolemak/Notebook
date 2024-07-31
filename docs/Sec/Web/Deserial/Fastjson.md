@@ -120,7 +120,7 @@ TemplatesImpl 类位于`com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesIm
 
 ![alt text](img/1.png){loading="lazy"}
 
-而类成员变量 `_outputProperties` 的 getter 方法 `getOutputProperties()` 方法调用了 `newTransformer()` 方法，而 `newTransformer()` 又调用了 `getTransletInstance()` 方法。
+类成员变量 `_outputProperties` 的 getter 方法 `getOutputProperties()` 方法调用了 `newTransformer()` 方法，而 `newTransformer()` 又调用了 `getTransletInstance()` 方法。
 
 ![alt text](img/2.png){loading="lazy"}
 
@@ -130,7 +130,14 @@ TemplatesImpl 类位于`com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesIm
 
 ![alt text](img/4.png){loading="lazy"}
 
-寻找发现在defineClass()方法中会加载 bytecode，只需控制 _name 不为 null, _tfactory 不为 null, 同时为了使部分没有构造方法的私有变量被我们控制，需要在 `JSON.parseObject` 时使用 `Feature.SupportNonPublicField` 参数。
+寻找发现在defineClass()方法中会加载 bytecode，条件如下：
+
+1. TemplatesImpl的_name不等于null
+2. TemplatesImpl的_class要等于null
+3. TemplatesImpl的_bytecodes不等于null
+4. _bytecodes中的类必须是`com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet`的子类
+
+同时为了使部分没有构造方法的私有变量被我们控制，需要在 `JSON.parseObject` 时使用 `Feature.SupportNonPublicField` 参数。
 
 ![alt text](img/5.png)
 

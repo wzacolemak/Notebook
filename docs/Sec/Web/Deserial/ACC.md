@@ -547,28 +547,33 @@ public class lazymap {
         if (member.equals("equals") && paramTypes.length == 1 &&
             paramTypes[0] == Object.class)
             return equalsImpl(args[0]);
-        if (paramTypes.length != 0)
-            throw new AssertionError("Too many parameters for an annotation method");
-
-        switch(member) {
-        case "toString":
+        assert paramTypes.length == 0;
+        if (member.equals("toString"))
             return toStringImpl();
-        case "hashCode":
+        if (member.equals("hashCode"))
             return hashCodeImpl();
-        case "annotationType":
+        if (member.equals("annotationType"))
             return type;
-        }
 
         // Handle annotation member accessors
         Object result = memberValues.get(member);
 
-        ...
+        if (result == null)
+            throw new IncompleteAnnotationException(type, member);
+
+        if (result instanceof ExceptionProxy)
+            throw ((ExceptionProxy) result).generateException();
+
+        if (result.getClass().isArray() && Array.getLength(result) != 0)
+            result = cloneArray(result);
+
+        return result;
     }
 ```
 
 为了绕过前面两条if语句的判断，我们构造的map需要满足：
 
-1. 调用方法名字不为equal
+1. 调用方法名不在if中
 2. 参数个数为0
 
 随后我们考虑如何将该类的 memberValues 变量设置为我们构造的 LazyMap 对象。该类的构造方法是private的，因此无法直接调用。
