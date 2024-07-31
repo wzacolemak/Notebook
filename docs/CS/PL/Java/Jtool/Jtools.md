@@ -10,6 +10,7 @@ comments: true
 ## JDK 各版本源码
 
 [openjdk-sources](https://openjdk-sources.osci.io/){target="_blank"}
+[openjdk Mercurial repository](https://hg.openjdk.org/){target="_blank"}
 
 ## JEnv for windows
 [JEnv](https://github.com/FelixSelter/JEnv-for-Windows){target=_blank}是一个命令行工具，用于在不同的Java版本之间切换。它可以设置全局Java版本或者项目级别的Java版本。
