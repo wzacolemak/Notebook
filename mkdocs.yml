@@ -95,8 +95,8 @@ extra:
       link: mailto:<colemak@zju.edu.cn>
 
 plugins:
-  - search
-  - heti
+  - search:
+      separator: '[\s\u200b\-]'
   - tags:
       tags_file: tags.md
   - encryptcontent:  # now just for one page, need to be improved
@@ -115,7 +115,9 @@ plugins:
       words_per_minute: 200
       codelines_per_minute: 60
       page_check_metadata: comments
-  - glightbox
+  - glightbox:
+      width: 80%
+  - heti
 
 markdown_extensions:
   - toc:
