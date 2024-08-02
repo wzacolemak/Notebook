@@ -15,6 +15,8 @@ nav:
           - CS/PL/Java/JavaSec/java_fund.md
           - CS/PL/Java/JavaSec/java_web.md
           - CS/PL/Java/JavaSec/java_web_vul.md
+          - CS/PL/Java/JavaSec/jdbc.md
+          - CS/PL/Java/JavaSec/java_rmi.md
           - CS/PL/Java/JavaSec/java_ram_webshell.md
           - Struts2 漏洞: 
             - CS/PL/Java/JavaSec/Struts2/index.md
@@ -116,7 +118,7 @@ plugins:
       codelines_per_minute: 60
       page_check_metadata: comments
   - glightbox:
-      width: 80%
+      width: 90%
   - heti
 
 markdown_extensions:

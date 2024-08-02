@@ -12,3 +12,4 @@ comments: true
 - java 字节码解析
 - java bytebuddy 用法
 - Agent破解license
+- MySQL JDBC 反序列化
