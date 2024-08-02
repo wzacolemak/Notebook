@@ -161,8 +161,10 @@ markdown_extensions:
 extra_javascript:
   - https://cdn.tonycrane.cc/utils/katex.min.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
+  # - js/heti.js
   - js/katex.js
 
 extra_css:
   - https://cdn.tonycrane.cc/utils/katex.min.css
   - https://gcore.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.7.0/style.css
+  # - css/heti.css

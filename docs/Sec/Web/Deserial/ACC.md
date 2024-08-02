@@ -6,7 +6,7 @@ tags:
 ---
 # Apache Commons Collections反序列化漏洞
 
-Apache Commons是Apache开源的Java通用类项目，在Java中项目中被广泛的使用，Apache Commons当中有一个组件叫做`Apache Commons Collections`，主要封装了Java的Collection（集合）相关类对象。本节将逐步详解Collections反序列化攻击链(仅以TransformedMap调用链为示例)最终实现反序列化RCE。
+Apache Commons是Apache开源的Java通用类项目，在Java中项目中被广泛的使用，Apache Commons当中有一个组件叫做`Apache Commons Collections`，主要封装了Java的Collection（集合）相关类对象。本节将逐步详解Collections反序列化攻击链（仅以TransformedMap调用链为示例）最终实现反序列化RCE。
 
 ![alt text](img/cc.png)
 
@@ -228,7 +228,7 @@ public static Map decorateTransform(Map map, Transformer keyTransformer, Transfo
 }
 ```
 
-调用`TransformedMap`的`setValue`/`put`/`putAll`中的任意方法都会调用`transform`方法，从而也就会触发命令执行：
+调用`TransformedMap`的`setValue` 、 `put` 、 `putAll`中的任意方法都会调用`transform`方法，从而也就会触发命令执行：
 
 ??? example "使用 TransformedMap类的setValue触发transform示例："
 
@@ -283,6 +283,7 @@ public static Map decorateTransform(Map map, Transformer keyTransformer, Transfo
 
     }
     ```
+
     运行结果如下：
 
     ![alt text](img/10.png)
@@ -291,11 +292,11 @@ public static Map decorateTransform(Map map, Transformer keyTransformer, Transfo
 
 1. 实现了`java.io.Serializable`接口
 2. 并且可以传入我们构建的`TransformedMap`对象
-3. 调用了`TransformedMap`中的`setValue`/`put`/`putAll`中的任意方法一个方法的类
+3. 调用了`TransformedMap`中的`setValue`、`put`、`putAll`中的任意方法一个方法的类
 
 #### AnnotationInvocationHandler
 
-`sun.reflect.annotation.AnnotationInvocationHandler`类实现了`java.lang.reflect.InvocationHandler`(Java动态代理)接口和`java.io.Serializable`接口，它还重写了`readObject`方法，在`readObject`方法中间接的调用了`TransformedMap中MapEntry`的`setValue`方法，从而完成了整个攻击链的调用。
+`sun.reflect.annotation.AnnotationInvocationHandler`类实现了`java.lang.reflect.InvocationHandler`（Java动态代理）接口和`java.io.Serializable`接口，它还重写了`readObject`方法，在`readObject`方法中间接的调用了`TransformedMap中MapEntry`的`setValue`方法，从而完成了整个攻击链的调用。
 
 ```java title="sun.reflect.annotation.AnnotationInvocationHandler" linenums="1"
 package sun.reflect.annotation;
@@ -592,10 +593,11 @@ public class lazymap {
 2. 用`AnnotationInvocationHandler`类作为代理处理器创建代理对象`proxyInstance`
 3. 再次用反射创建`AnnotationInvocationHandler`类对象 o，将其`memberValues`变量设置为`proxyInstance`
 4. 序列化并反序列化o，此时触发`readObject`方法
-5. `readobject` 方法中无参调用了`proxyInstance.entrySet()`，因此 Instance (`AnnotationInvocationHandler`的实例) 的 `invoke` 方法被调用
+5. `readobject` 方法中无参调用了`proxyInstance.entrySet()`，因此 Instance（`AnnotationInvocationHandler`的实例）的 `invoke` 方法被调用
 6. 在`invoke`方法中触发`memberValues.get`方法，其`memberValues`变量被设置为`LazyMap`对象，最终触发`transform`实现RCE
 
 Gadget chain:
+
 ```java
 ObjectInputStream.readObject()
 	AnnotationInvocationHandler.readObject()
@@ -747,6 +749,7 @@ CC1链在jdk 8u71版本进行了修复，在`AnnotationInvocationHandler`类的`
 
     JDK 7、8 均不受限制
 
+
 由于对CC1链的修复，`AnnotationInvocationHandler`已不可用，因此我们需要找到新的方法触发LazyMap的get方法，get之后的利用流程与CC1-LazyMap相同。
 
 这里我们找到了`org.apache.commons.collections.keyvalue.TiedMapEntry`类，在`hashCode`方法中调用了`getValue`方法，其中调用了`get`
@@ -766,7 +769,7 @@ CC1链在jdk 8u71版本进行了修复，在`AnnotationInvocationHandler`类的`
 
 在编写过程中存在一些值得注意的问题：
 
-若我们直接如下编写，会发现在`hashMap1.put`就弹出计算器，并在后续反序列化阶段报错，这是因为HashMap的put方法也会调用`hashCode(key)`(这一点在URLDNS链中也有提及)，因此我们需要通过反射修改链的一部分使其在构造阶段不触发。
+若我们直接如下编写，会发现在`hashMap1.put`就弹出计算器，并在后续反序列化阶段报错，这是因为HashMap的put方法也会调用`hashCode(key)`（这一点在URLDNS链中也有提及），因此我们需要通过反射修改链的一部分使其在构造阶段不触发。
 
 ??? note "code"
 
@@ -876,3 +879,4 @@ public class exp {
 
 1. [Commons-Collections反序列化漏洞复现](https://www.cnblogs.com/BUTLER/p/16478574.html){target="_blank"}
 2. [Java安全CC1分析(Lazymap类)](https://blog.csdn.net/Elite__zhb/article/details/136097084){target="_blank"}
+3. [CC链 1-7 分析](https://xz.aliyun.com/t/9409){target="_blank"}
