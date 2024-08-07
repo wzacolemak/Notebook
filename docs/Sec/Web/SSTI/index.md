@@ -17,6 +17,8 @@ SSIT（Server-Side Template Injection）攻击者可以通过构造恶意的模�
 - [Twig 模板注入](/Sec/Web/SSTI/twig)
 - [Smarty 模板注入](/Sec/Web/SSTI/smarty)
 
+## Java SSTI
+- [Velocity 模板注入](/Sec/Web/SSTI/velocity)
+
 ## 参考资料
 - [SSTI（模板注入）漏洞](https://www.cnblogs.com/bmjoker/p/13508538.html){target="_blank"}
-- [【网络安全 | 1.5w字总结】SSTI漏洞入门](https://blog.csdn.net/2301_77485708/article/details/132467976){target="_blank"}

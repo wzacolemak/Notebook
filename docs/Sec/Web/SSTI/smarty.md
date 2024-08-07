@@ -64,4 +64,4 @@ public function clearConfig($varname = null)
 
 
 ## 参考资料
-[Smarty 最新 SSTI 总结](https://xz.aliyun.com/t/11108)
+[Smarty 最新 SSTI 总结](https://xz.aliyun.com/t/11108){target="_blank"}

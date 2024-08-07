@@ -45,6 +45,7 @@ nav:
         - Sec/Web/SSTI/index.md
         - Twig: Sec/Web/SSTI/twig.md
         - Smarty: Sec/Web/SSTI/smarty.md
+        - Velocity: Sec/Web/SSTI/velocity.md
 
 theme:
   font:
@@ -99,8 +100,6 @@ extra:
 plugins:
   - search:
       separator: '[\s\u200b\-]'
-  - tags:
-      tags_file: tags.md
   - encryptcontent:  # now just for one page, need to be improved
       password_file: 'password.yml'
       decryption_failure_message: '密码错误'
