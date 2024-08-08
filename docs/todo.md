@@ -7,9 +7,9 @@ comments: true
 - SQL注入
 - XSS
 - JNDI注入 JDBC RCE
+- SpirngMVC
 
 ## hard
 - java 字节码解析
 - java bytebuddy 用法
 - Agent破解license
-- MySQL JDBC 反序列化
