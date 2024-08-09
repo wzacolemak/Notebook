@@ -6,7 +6,8 @@ comments: true
 `Thymeleaf`是用来开发Web和独立环境项目的现代服务器端Java模板引擎，既适用于 web 环境，也适用于独立环境，比较适合当前的人员分工问题。其能够处理HTML、XML、JavaScript、CSS 甚至纯文本。提供了一种优雅且高度可维护的模板创建方法，可以直接在浏览器中正确显示，也可以作为静态原型方便开发团队协作。
 
 **特点**
-- **动静结合：** TThymeleaf使用html通过一些特定标签语法代表其含义，但并未破坏html结构，即使无网络、不通过后端渲染也能在浏览器成功打开，当有数据返回到页面时，Thymeleaf 标签会动态地替换掉静态内容，使页面动态显示，大大方便界面的测试和修改。
+
+- **动静结合：** Thymeleaf使用html通过一些特定标签语法代表其含义，但并未破坏html结构，即使无网络、不通过后端渲染也能在浏览器成功打开，当有数据返回到页面时，Thymeleaf 标签会动态地替换掉静态内容，使页面动态显示，大大方便界面的测试和修改。
 - **开箱即用：** Thymeleaf提供标准和spring标准两种方言，可以直接套用模板实现JSTL、 OGNL表达式效果
 - **与SpringBoot完美整合**，SpringBoot提供了Thymeleaf的默认配置，并且为Thymeleaf设置了视图解析器，我们可以像操作jsp一样来操作Thymeleaf。除了模板语法外，代码几乎没有任何区别
 
@@ -37,6 +38,7 @@ th:fragment|片段|`<div th:fragment="header">header content</div>`
     `th:text`指令出于安全考虑，会把表达式读取到的值进行处理，防止html的注入。例如，`<p>你好</p>`将会被格式化输出为`$lt;p$gt;你好$lt;/p$lt`;。如果想要不进行格式化输出，而是要输出原始内容，则使用`th:utext`来代替.
 
 **链接**
+
 `@{}` 用于引用资源，可以是static目录下的文件，也可以是网络资源
 
 ```html
@@ -157,7 +159,7 @@ public void getDocument(@PathVariable String document) {
 
 ![alt text](img/6.png)
 
-### 调试分析
+## 调试分析
 
 调试前面部分SpringMVC DispatcherServlet流程参考：[SpringMVC 视图渲染流程](/CS/PL/Java/Spring/springmvc/#_2)
 
