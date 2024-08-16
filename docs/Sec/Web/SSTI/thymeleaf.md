@@ -161,7 +161,7 @@ public void getDocument(@PathVariable String document) {
 
 ## 调试分析
 
-调试前面部分SpringMVC DispatcherServlet流程参考：[SpringMVC 视图渲染流程](/CS/PL/Java/Spring/springmvc/#_2)
+调试前面部分SpringMVC DispatcherServlet流程参考：[SpringMVC 视图渲染流程](/CS/PL/Java/Spring/SpringMVC/springmvc/#_2)
 
 进入 `ThymeleafView#render` 方法
 

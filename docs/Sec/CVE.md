@@ -7,8 +7,7 @@ comments: true
 
 ### 2024
 
-- [**CVE-2024-38007:** 狂躁许可]
-https://sites.google.com/site/zhiniangpeng/blogs/MadLicense
+- [**CVE-2024-38007:** 狂躁许可](/Sec/Pwn/Win/CVE-2024-38077/)
 
 ### 2023
 

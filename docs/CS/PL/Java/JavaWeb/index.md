@@ -1,10 +1,7 @@
 ---
-tags:
-    - Web Sec
-    - Java
 comments: true
 ---
-# 2 Java Web 基础
+# Java Web 基础
 
 Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言的应用程序开发平台，用于开发和部署大型分布式多层架构的企业应用。Java EE 是 Java SE 的扩展，提供了一组 API 和运行时环境，用于构建、部署和管理企业级应用程序。2017 年的 9 月Oracle将`Java EE` 捐赠给 Eclipse 基金会，由于Oracle持有Java商标原因，Eclipse基金于2018年3月将`Java EE`更名为[Jakarta EE](https://jakarta.ee/)。
 
@@ -12,7 +9,7 @@ Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言�
 
 [Servlet Wiki](https://zh.wikipedia.org/wiki/Java_Servlet)
 
-## 2.1 Request & Response
+## Request & Response
 
 今天我们访问网站，使用App时，都是基于Web这种Browser/Server模式，简称BS架构，它的特点是，客户端只需要浏览器，应用程序的逻辑和数据都存储在服务器端。浏览器只需要请求服务器，获取Web页面，并把Web页面展示给用户即可。
 
@@ -22,7 +19,11 @@ Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言�
 
 `HttpServletResponse`对象用于响应客户端的请求，通过`HttpServletResponse`对象可以处理服务器端对客户端请求响应。
 
-### `HttpServletRequest `常用方法
+### HttpServletRequest
+
+`HttpServletRequest`封装了一个HTTP请求，它实际上是从`ServletRequest`继承而来。最早设计Servlet时，设计者希望Servlet不仅能处理HTTP，也能处理类似SMTP等其他协议，因此，单独抽出了`ServletRequest`接口，但实际上除了HTTP外，并没有其他协议会用Servlet处理，所以这是一个过度设计。
+
+`HttpServletRequest`提供了一系列方法，用于获取HTTP请求的各种信息，包括请求头、请求参数、请求体等。
 
 | 方法                            | 说明                                       |
 | ------------------------------- | ------------------------------------------ |
@@ -41,7 +42,11 @@ Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言�
 | getRemoteHost()                 | 获取客户端名称                             |
 | getServerPath()                 | 获取请求的文件的路径                       |
 
-### `HttpServletResponse `常用方法
+此外，HttpServletRequest还有两个方法：`setAttribute()`和`getAttribute()`，可以给当前HttpServletRequest对象附加属性，相当于将其作为`Map<String, Object>`使用。
+
+### HttpServletResponse 
+
+HttpServletResponse 封装了一个HTTP响应。由于HTTP响应必须先发送Header，再发送Body，所以，操作HttpServletResponse对象时，必须先调用设置Header的方法，最后调用发送Body的方法。
 
 | 方法                                 | 说明                                 |
 | ------------------------------------ | ------------------------------------ |
@@ -56,55 +61,13 @@ Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言�
 | setStatus(int sc)                    | 给当前响应设置状态码                 |
 | setContentType(String ContentType)   | 设置响应的MIME类型                   |
 
-## 2.2 Servlet
+写入响应时，需要通过`getOutputStream()`获取写入流或者通过`getWriter()`获取字符流。Content-Length 由服务器自动计算，不需要手动设置。
 
-`Servlet `是在 `Java Web`容器中运行的`小程序`,通常我们用` Servlet `来处理一些较为复杂的服务器端的业务逻辑。` Servlet `是`Java EE`的核心,也是所有的MVC框架的实现的根本。
+!!! warning
 
-```mermaid
-block-beta
-    columns 3
-    space:2 A["Myservlet"]
-    space:2 B["Servlet API"]
-    Browser blockArrowId<["HTTP"]>(x) C["Web Server"]
-```
+    写入完毕后需要调用flush()，因为大部分Web服务器都基于HTTP/1.1协议，会复用TCP连接。如果没有调用flush()，将导致缓冲区的内容无法及时发送到客户端。此外，写入完毕后千万不要调用close()，原因同样是因为会复用TCP连接，如果关闭写入流，将关闭TCP连接，使得Web服务器无法复用此TCP连接。
 
-定义 Servlet 需要继承`javax.servlet.http.HttpServlet`类并重写`doXXX`(如`doGet、doPost`)方法或者`service`方法，重写`HttpServlet`类的`service`方法可以获取到上述七种Http请求方法的请求。
-
-**javax.servlet.http.HttpServlet**类继承于`javax.servlet.GenericServlet`，而`GenericServlet`又实现了`javax.servlet.Servlet`和`javax.servlet.ServletConfig`。
-
-`javax.servlet.Servlet`接口中只定义了`servlet`基础生命周期方法：`init(初始化)`、`getServletConfig(配置)`、`service(服务)`、`destroy(销毁)`,而`HttpServlet`不仅实现了`servlet`的生命周期并通过封装`service`方法抽象出了`doGet/doPost/doDelete/doHead/doPut/doOptions/doTrace`方法用于处理来自客户端的不一样的请求方式，我们的Servlet只需要重写其中的请求方法或者重写`service`方法即可实现`servlet`请求处理。
-
-??? example
-
-    ```java
-    // WebServlet注解表示这是一个Servlet，并映射到地址/:
-    package cc.servlet;
-
-    import java.io.IOException;
-    import java.io.PrintWriter;
-
-    import jakarta.servlet.ServletException;
-    import jakarta.servlet.annotation.WebServlet;
-    import jakarta.servlet.http.HttpServlet;
-    import jakarta.servlet.http.HttpServletRequest;
-    import jakarta.servlet.http.HttpServletResponse;
-
-    @WebServlet(urlPatterns = "/")
-    public class HelloServlet extends HttpServlet {
-
-        @Override
-        protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-            resp.setContentType("text/html");
-            PrintWriter pw = resp.getWriter();
-            pw.write("<h1>Hello, world!(Servlet Test)</h1>");
-            pw.flush();
-        }
-    }
-    ```
-    运行后访问`http://localhost:8080/`即可看到`Hello, world!(Servlet Test)`。
-    ![alt text](img/Servlet.png){loading=“lazy”}
-
-## 2.3 JSP基础
+## JSP基础
 
 `JSP`(`JavaServer Pages`) 是与 `PHP`、`ASP`、`ASP.NET` 等类似的脚本语言，`JSP`是为了简化`Servlet`的处理流程而出现的替代品，早期的`Java EE`因为只能使用`Servlet`来处理客户端请求而显得非常的繁琐和不便，使用JSP可以快速的完成后端逻辑请求。
 
@@ -139,42 +102,26 @@ JSP本质上就是一个Servlet，只不过无需配置映射路径，Web Server
 2. `<%@ include ... %>`  包含其他文件（静态包含）
 3. `<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>` 引入标签库的定义
 
-## 2.4 Filter
+## Cookie 和 Session 对象
 
-JavaEE的Servlet规范提供了Filter组件，即过滤器，它的作用是，在HTTP请求到达Servlet之前，可以被一个或多个Filter预处理，类似打印日志、登录检查等逻辑。
+因为HTTP协议是一个无状态协议，即Web应用程序无法区分收到的两个HTTP请求是否是同一个浏览器发出的。为了跟踪用户状态，服务器可以向浏览器分配一个唯一ID，并以`Cookie`的形式发送到浏览器，浏览器在后续访问时总是附带此`Cookie`，这样，服务器就可以识别用户身份。
 
-???+ example 
-
-    ```java
-    @WebFilter("/user/*")
-    public class AuthFilter implements Filter {
-        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-                throws IOException, ServletException {
-            System.out.println("AuthFilter: check authentication");
-            HttpServletRequest req = (HttpServletRequest) request;
-            HttpServletResponse resp = (HttpServletResponse) response;
-            if (req.getSession().getAttribute("user") == null) {
-                // 未登录，自动跳转到登录页:
-                System.out.println("AuthFilter: not signin!");
-                resp.sendRedirect("/signin");
-            } else {
-                // 已登录，继续处理:
-                chain.doFilter(request, response);
-            }
-        }
-    }
-    ```
-
-Servlet规范并没有对@WebFilter注解标注的Filter规定顺序。如果一定要给每个Filter指定顺序，就必须在web.xml文件中对这些Filter进行配置
-
-## 2.5 Cookie 和 Session 对象
-
-
-为了跟踪用户状态，服务器可以向浏览器分配一个唯一ID，并以`Cookie`的形式发送到浏览器，浏览器在后续访问时总是附带此`Cookie`，这样，服务器就可以识别用户身份。`Cookie` 是最常用的Http会话跟踪机制，且所有`Servlet容器`都应该支持。当客户端不接受`Cookie`时，服务端可使用`URL重写`的方式作为会话跟踪方式。`Session ID`必须被编码为URL字符串中的一个路径参数，参数的名字必须是 `jsessionid`。
+`Cookie` 是最常用的Http会话跟踪机制，且所有`Servlet容器`都应该支持。`Session ID`必须被编码为URL字符串中的一个路径参数，参数的名字必须是 `jsessionid`。
 
 浏览器和服务端创建会话(`Session`)后，服务端将生成一个唯一的会话ID(`sessionid`)用于标识用户身份，然后会将这个会话ID通过`Cookie`的形式返回给浏览器，浏览器接受到`Cookie`后会在每次请求后端服务的时候带上服务端设置`Cookie`值，服务端通过读取浏览器的`Cookie`信息就可以获取到用于标识用户身份的会话ID，从而实现会话跟踪和用户身份识别。
 
 因为`Cookie`中存储了用户身份信息，并且还存储于浏览器端，攻击者可以使用`XSS`漏洞获取到`Cookie`信息并盗取用户身份就行一些恶意的操作。
 
 除了使用Cookie机制可以实现Session外，还可以通过隐藏表单、URL末尾附加ID来追踪Session。这些机制很少使用，最常用的Session机制仍然是Cookie。
+
+在使用多台服务器构成集群时，使用Session会遇到一些额外的问题。通常，多台服务器集群使用反向代理作为网站入口：
+
+![alt text](img/3.png){:width="65%" loading="lazy"}
+
+这将导致用户在Server 1上存储的Session数据无法被Server 2读取，即从Server 1登录后，再次请求时被Server 2处理，用户仍处于未登录状态。解决上述问题通常有以下两种方案：
+
+1. 在所有Web Server之间进行Session复制，但这样会严重消耗网络带宽，并且，每个Web Server的内存均存储所有用户的Session，内存使用率很低。
+2. 粘滞会话（Sticky Session）机制，即反向代理在转发请求的时候，总是根据JSESSIONID的值判断，相同的JSESSIONID总是转发到固定的Web Server，但这需要反向代理的支持。
+
+无论采用何种方案，使用Session机制，会使得Web Server的集群很难扩展，因此，Session适用于中小型Web应用程序。对于大型Web应用程序来说，通常需要避免使用Session机制。
 

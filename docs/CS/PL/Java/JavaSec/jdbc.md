@@ -5,7 +5,7 @@ tags:
 comments: true
 ---
 
-# 4 JDBC
+# 3 JDBC
 
 ## JDBC 基础
 
@@ -354,8 +354,6 @@ CREATE TRIGGER poc2 BEFORE SELECT ON
 INFORMATION_SCHEMA.TABLES AS $$//javascript
 java.lang.Runtime.getRuntime().exec("calc") $$;
 ```
-
-TRIGGER不能在INIT处使用
 
 #### PostgreSQL
 

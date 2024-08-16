@@ -4,7 +4,7 @@ tags:
     - Web Sec
 comments: true
 ---
-# 5 Java RMI
+# 4 Java RMI
 
 RMI(Remote Method Invocation)即Java远程方法调用，RMI用于构建分布式应用程序，RMI实现了Java程序之间跨JVM的远程通信。
 

@@ -4,8 +4,8 @@ tags:
     - Java
 comments: true
 ---
-# 3 Java Web 常见漏洞
-## 3.1 文件访问类漏洞
+# 2 Java Web 常见漏洞
+## 2.1 文件访问类漏洞
 
 常见的Java文件操作相关的漏洞大致有如下类型：
 
@@ -149,7 +149,7 @@ RASP可以使用Agent机制实现Hook任意的Java类API，因此可以轻易的
 
 除此之外，还可以搜索一下`FileUtil/FileUtils`很有可能用户会封装文件操作的工具类。
 
-## 3.2 任意文件上传漏洞
+## 2.2 任意文件上传漏洞
 
 ### Apache commons fileupload文件上传
 
@@ -491,7 +491,7 @@ Apache commons-fileupload`底层处理解析Multipart的类是`org.apache.common
 
 RASP为了更好的防御文件上传类请求，需要支持[RFC 2047](https://www.ietf.org/rfc/rfc2047.txt){target=_blank}的QP编码，还需要支持对Spring MVC内置的文件名编码处理处理。
 
-## 3.3 SQL注入漏洞
+## 2.3 SQL注入漏洞
 
 攻击方式参考[SQL 注入](/Sec/Web/SQL)
 
@@ -510,7 +510,7 @@ RASP为了更好的防御文件上传类请求，需要支持[RFC 2047](https://
     <figcaption>RASP防御SQL注入示意</figcaption>
 </figure>
 
-## 3.4 XSS 漏洞
+## 2.4 XSS 漏洞
 
 ### XSS攻击
 XSS 攻击方式参考[XSS](/Sec/Web/XSS)
@@ -542,7 +542,7 @@ RASP可以实现类似于全局XSSFilter的请求参数过滤功能，比较稳�
 
 为了支持一些常用的HTML标签和HTML标签属性，RASP可以通过词法解析的方式，将传入的字符串参数值解析成HTML片段，然后分析其中的标签和属性是否合法即可。
 
-## 3.5 反序列化漏洞
+## 2.5 反序列化漏洞
 ### 反序列化攻击
 参考[反序列化](/Sec/Web/Deserial)
 
@@ -603,7 +603,7 @@ public class ObjectInputStream extends InputStream implements ObjectInput, Objec
 
 使用RASP检测反序列化攻击，可以不用受制于请求协议、服务、框架等，检测规则可实时更新，从而程度上实现反序列化攻击防御。
 
-## 3.6 本地命令执行
+## 2.6 本地命令执行
 
 ### 本地命令执行攻击
 

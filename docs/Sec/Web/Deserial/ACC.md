@@ -874,6 +874,14 @@ public class exp {
 }
 ```
 
+## 修复
+
+Apache Commons Collections官方在2015年底得知序列化相关的问题后，就在两个分支上分别发布了版本4.1和3.2.2。
+
+在3.2.2上，新版本增加了一个方法`FunctorUtils#checkUnsafeSerialization`用来检测序列化是否安全。这个检查在常⻅的危险Transformer类(`InstantiateTransformer`、 `InvokerTransformer`、`PrototypeFactory`、`CloneTransformer` 等)的 readObject 里进行调用，所以，当我们反序列化包含这些对象时就会抛出异常
+
+在4.1上，这几个危险Transformer类不再实现 Serializable 接口，无法进行序列化和反序列化。
+
 ## 参考资料
 
 

