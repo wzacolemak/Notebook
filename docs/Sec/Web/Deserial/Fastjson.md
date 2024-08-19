@@ -114,32 +114,9 @@ String payload2 = "{\"@type\":\"java.net.Inet6Address\",\"val\":\"zf7tbu.dnslog.
 
 **TemplatesImpl 反序列化**
 
-TemplatesImpl 类位于`com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl`，实现了 `Serializable` 接口，因此它可以被序列化，我们来看一下漏洞触发点。
+TemplatesImpl 类位于`com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl`，实现了 `Serializable` 接口，因此它可以被序列化。
 
-注意到该类中存在一个成员属性 `_class`，是一个 Class 类型的数组，数组里下标为`_transletIndex` 的类会在 `getTransletInstance()` 方法中使用 `newInstance()` 实例化。
-
-![alt text](img/1.png){loading="lazy"}
-
-类成员变量 `_outputProperties` 的 getter 方法 `getOutputProperties()` 方法调用了 `newTransformer()` 方法，而 `newTransformer()` 又调用了 `getTransletInstance()` 方法。
-
-![alt text](img/2.png){loading="lazy"}
-
-![alt text](img/3.png){loading="lazy"}
-
-如果可以控制`_class`数组中的类，那么就可以在`getTransletInstance()` 方法中实例化任意类，从而实现远程代码执行。
-
-![alt text](img/4.png){loading="lazy"}
-
-寻找发现在defineClass()方法中会加载 bytecode，条件如下：
-
-1. TemplatesImpl的_name不等于null
-2. TemplatesImpl的_class要等于null
-3. TemplatesImpl的_bytecodes不等于null
-4. _bytecodes中的类必须是`com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet`的子类
-
-同时为了使部分没有构造方法的私有变量被我们控制，需要在 `JSON.parseObject` 时使用 `Feature.SupportNonPublicField` 参数。
-
-![alt text](img/5.png)
+利用参考[TemplatesImpl反序列化](/Sec/Web/Deserial/JDK/#templatesimpl)
 
 ```json title="exp"
 {

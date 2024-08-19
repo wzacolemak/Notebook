@@ -17,13 +17,14 @@ nav:
           - CS/PL/Java/JavaSec/jdbc.md
           - CS/PL/Java/JavaSec/java_rmi.md
           - CS/PL/Java/JavaSec/java_ram_webshell.md
+          - CS/PL/Java/JavaSec/java_exp.md
           - CS/PL/Java/JavaSec/java_asm.md
           - CS/PL/Java/JavaSec/java_json.md
         - Java Web:
           - CS/PL/Java/JavaWeb/index.md
           - CS/PL/Java/JavaWeb/servlet.md
         - Spring:
-          - CS/PL/Java/Spring/SpringMVC/index.md
+          - CS/PL/Java/Spring/SpringMVC/springmvc.md
         - Java Tool: CS/PL/Java/Jtool/Jtools.md
   - CTF: 
     - CTF/index.md

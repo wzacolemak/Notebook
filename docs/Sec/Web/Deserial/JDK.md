@@ -324,9 +324,117 @@ JDK 7u21 是一个原生的反序列化利用链，主要通过`AnnotationInvoca
 
 ### TemplatesImpl
 
-我们令type为TemplatesImpl类，将o(即执行方法的对象)置为恶意构造的TemplatesImpl实例，则`equalsImpl`会调用`TemplatesImpl.getOutputProperties()`，加载类字节码实现RCE。
+`com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl`类的作用是表示XSLT模板，它可以解析XSLT样式表并将其编译成可重用的模板。XSLT是一种XML风格语言，用于将XML文档转换为其他格式，比如HTML、文本或其他XML文档。
 
-TemplatesImpl利用参考[Fastjson](/Sec/Web/Deserial/Fastjson/#1224)
+在 TemplatesImpl 类中定义了一个内部类，即TransletClassLoader，在这个类中有对defineClass进行重写，且未显式声明访问修饰符，默认访问级别是包私有，即该类能够被同一个包中的其他类访问。
+
+一条可行的链为 getOutputProperties() → newTransformer() → getTransletInstance() → defineTransletClasses() → defineClass()。（其中newTransformer已为public，但此处需要getter方法）
+
+=== "getOutputProperties"
+
+    ```java
+    public synchronized Properties getOutputProperties() {
+        try {
+            return this.newTransformer().getOutputProperties();
+        } catch (TransformerConfigurationException var2) {
+            return null;
+        }
+    }
+    ```
+=== "newTransformer"
+
+    ```java
+    public synchronized Transformer newTransformer() throws TransformerConfigurationException {
+        TransformerImpl transformer = new TransformerImpl(this.getTransletInstance(), this._outputProperties, this._indentNumber, this._tfactory);
+        if (this._uriResolver != null) {
+            transformer.setURIResolver(this._uriResolver);
+        }
+
+        return transformer;
+    }
+    ```
+=== "getTransletInstance"
+
+    ```java
+    private Translet getTransletInstance() throws TransformerConfigurationException {
+        ErrorMsg err;
+        try {
+            if (this._name == null) { // _name 非空
+                return null;
+            } else {
+                if (this._class == null) {
+                    this.defineTransletClasses(); // defineTransletClasses
+                }
+
+                AbstractTranslet translet = (AbstractTranslet)this._class[this._transletIndex].newInstance();
+                translet.postInitialization();
+                translet.setTemplates(this);
+                translet.setOverrideDefaultParser(this._overrideDefaultParser);
+                translet.setAllowedProtocols(this._accessExternalStylesheet);
+                if (this._auxClasses != null) {
+                    translet.setAuxiliaryClasses(this._auxClasses);
+                }
+
+                return translet;
+            }
+        } catch (InstantiationException var3) {
+            err = new ErrorMsg("TRANSLET_OBJECT_ERR", this._name);
+            throw new TransformerConfigurationException(err.toString());
+        } catch (IllegalAccessException var4) {
+            err = new ErrorMsg("TRANSLET_OBJECT_ERR", this._name);
+            throw new TransformerConfigurationException(err.toString());
+        }
+    }
+    ```
+
+=== "defineTransletClasses"
+
+    ```java
+        private void defineTransletClasses() throws TransformerConfigurationException {
+            if (this._bytecodes == null) {
+                ErrorMsg err = new ErrorMsg("NO_TRANSLET_CLASS_ERR");
+                throw new TransformerConfigurationException(err.toString());
+            } 
+            else {
+                TransletClassLoader loader = (TransletClassLoader)AccessController.doPrivileged(new PrivilegedAction() {
+                    public Object run() {
+                        return new TransletClassLoader(ObjectFactory.findClassLoader(), TemplatesImpl.this._tfactory.getExternalExtensionsMap()); 
+                        // _tfactory 需要是一个 TransformerFactoryImpl 对象
+                    }
+                });
+
+                ErrorMsg err;
+                try {
+                    int classCount = this._bytecodes.length;
+                    this._class = new Class[classCount];
+                    if (classCount > 1) {
+                        this._auxClasses = new HashMap();
+                    }
+
+                    for(int i = 0; i < classCount; ++i) {
+                        this._class[i] = loader.defineClass(this._bytecodes[i]); // 加载字节码
+                        Class superClass = this._class[i].getSuperclass();
+                        if (superClass.getName().equals(ABSTRACT_TRANSLET)) { // 字节码类的父类为AbstractTranslet
+                            this._transletIndex = i;
+                        } else {
+                            this._auxClasses.put(this._class[i].getName(), this._class[i]);
+                        }
+                    }
+
+                    ...
+                }
+            }
+        }
+    ```
+
+根据分析可知，我们需要满足如下条件才可触发反序列化：
+
+1. _name 不能为null，因为在getTransletInstance方法中存在对_name的非null判断
+2. _tfactory 需要是一个 TransformerFactoryImpl 对象，因为在defineTransletClasses方法中有调用到_tfactory.getExternalExtensionsMap()，getExternalExtensionsMap属于TransformerFactoryImpl类
+3. 字节码对应的类的父类必须是 com.sun.org.apache.xalan.internal.xsltc.runtime.AbstractTranslet，因为在defineTransletClasses() 中有判断 superClass.getName().equals(ABSTRACT_TRANSLET)
+
+
+令type为TemplatesImpl类，将o(即执行方法的对象)置为恶意构造的TemplatesImpl实例，则`equalsImpl`会调用`TemplatesImpl.getOutputProperties()`，加载类字节码实现RCE。
 
 ### LinkedHashSet
 
