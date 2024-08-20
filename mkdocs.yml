@@ -18,6 +18,7 @@ nav:
           - CS/PL/Java/JavaSec/java_rmi.md
           - CS/PL/Java/JavaSec/java_ram_webshell.md
           - CS/PL/Java/JavaSec/java_exp.md
+          - CS/PL/Java/JavaSec/jmx.md
           - CS/PL/Java/JavaSec/java_asm.md
           - CS/PL/Java/JavaSec/java_json.md
         - Java Web:
