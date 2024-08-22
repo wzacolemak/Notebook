@@ -1,7 +1,7 @@
 ---
 comments: true
 ---
-# 7 JMX
+# 5 JMX
 
 `JMX`，全称`Java Management Extensions`，用于管理和监控`java`应用程序。
 

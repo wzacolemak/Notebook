@@ -4,7 +4,7 @@ tags:
     - Java
 comments: true
 ---
-# 5 Java 内存马基础
+# 6 Java 内存马基础
 
 内存马又名无文件马，指无文件落地的webshell；由于传统的webshell需要写入文件，难以逃避防篡改监控。为了与传统的防御手段对抗，衍生出了一种新型的内存WebShell技术，其核心思想用一句话概括，即：利用类加载或Agent机制在JavaEE、框架或中间件的API中动态注册一个可访问的后门。
 

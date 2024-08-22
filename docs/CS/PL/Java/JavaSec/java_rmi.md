@@ -6,7 +6,19 @@ comments: true
 ---
 # 4 Java RMI
 
-RMI(Remote Method Invocation)即Java远程方法调用，RMI用于构建分布式应用程序，RMI实现了Java程序之间跨JVM的远程通信。
+## Java 底层协议概述
+
+**RPC**（Remote Procedure Call, 远程过程调用）：它是一种通过网络从远程计算机程序上请求服务，而不需要了解底层网络技术的协议。RPC协议假定某些传输协议的存在，如TCP或UDP，为通信程序之间携带信息数据。在OSI网络通信模型中，RPC跨越了传输层和应用层。RPC使得开发包括网络分布式多程序在内的应用程序更加容易。RPC采用客户机/服务器模式。请求程序就是一个客户机，而服务提供程序就是一个服务器。
+
+**JMS** (Java Messaging Service, Java 消息服务) 是一种允许应用程序创建、发送、接受和读取消息的Java API。JMS 在其中扮演的角色与JDBC 很相似， JDBC 提供了一套用于访问各种不同关系数据库的公共API，JMS 也提供了独立于特定厂商的企业消息系统访问方式。
+
+RMI和 RPC、JMS间的关系可以参考[RMI与RPC的区别](https://cloud.tencent.com/developer/article/1353191){target="_blank"}
+
+**RMI**（Remote Method Invocation, Java远程方法调用）用于构建分布式应用程序，RMI实现了Java程序之间跨JVM的远程通信，可以被看作SUN对RPC的Java版本的实现。
+
+RMI集合了Java序列化和Java远程方法协议(Java Remote Method Protocol)。这里的Java远程方法协议则是JRMP。
+
+## RMI架构
 
 <figure markdown="span">
   ![Image title](img/java-rmi.jpg){width=85%}
@@ -353,7 +365,7 @@ RMI通信中所有的对象都是通过Java序列化传输的，因此RMI存在�
 
 ## RMI-JRMP反序列化漏洞
 
-JRMP接口的两种常见实现方式：
+RMI接口的两种常见实现方式：
 
 1. JRMP协议(Java Remote Message Protocol)，RMI专用的Java远程消息交换协议。
 2. IIOP协议(Internet Inter-ORB Protocol) ，基于 CORBA 实现的对象请求代理协议。

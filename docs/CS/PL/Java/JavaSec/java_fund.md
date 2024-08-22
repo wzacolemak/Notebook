@@ -277,8 +277,9 @@ Google的GSON库在JSON反序列化的时候就使用这个方式来创建类实
 ### defineClass直接调用JVM创建类对象
 
 如果ClassLoader被限制，我们可以使用Unsafe的defineClass方法来实现通过字节码向JVM中注册类。
-`public native Class defineClass(String var1, byte[] var2, int var3, int var4);`
-`public native Class<?> defineClass(String var1, byte[] var2, int var3, int var4, ClassLoader var5, ProtectionDomain var6);`
+
+- `public native Class defineClass(String var1, byte[] var2, int var3, int var4);`
+- `public native Class<?> defineClass(String var1, byte[] var2, int var3, int var4, ClassLoader var5, ProtectionDomain var6);`
 
 ???+ example
 
