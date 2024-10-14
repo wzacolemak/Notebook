@@ -125,7 +125,7 @@ public class ForwardServlet extends HttpServlet {
     }
 }
 ```
-https://ilikeoyt.github.io/2024/08/13/jeecgboot-%E6%9D%83%E9%99%90%E7%BB%95%E8%BF%87-AviatorScript%E4%BB%A3%E7%A0%81%E6%89%A7%E8%A1%8C%E6%BC%8F%E6%B4%9E/
+
 ## Session 和 Cookie
 
 对于Web应用程序来说，我们总是通过HttpSession这个高级接口访问当前Session。可以认为Web服务器在内存中自动维护了一个ID到HttpSession的映射表，我们可以用下图表示：

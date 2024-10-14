@@ -1,5 +1,5 @@
 site_name: Colemak's Notes
-site_url: https://47.115.211.254:8000
+site_url: http://note.colemak.top
 site_author: colemak
 site_description: colemak's Notes
 repo_name: colemak/Notebook
@@ -9,6 +9,9 @@ nav:
   - Home: index.md
   - Computer Science:
     - CS/index.md
+    - 编译原理: CS/CompPrinc/index.md
+    - 容器:
+      - 内核机制: CS/Container/OSkernel.md
     - 编程语言:
       - Java:
         - Java Security:
@@ -35,6 +38,8 @@ nav:
   - Security:
     - Sec/index.md
     - 漏洞复现: Sec/CVE.md
+    - 论文阅读:
+      - 抽象资源攻击: Sec/Paper/AbstractResourceAttack.md
     - Web:
       - SQL注入:
         - Sec/Web/SQL/index.md
@@ -70,7 +75,7 @@ theme:
   icon: 
     logo: material/notebook-outline #左上角图标
     annotation: material/plus-circle-outline #注释图标
-  favicon: assets/favicon.png
+  favicon: assets/favicon.ico
   name: material
   custom_dir: overrides
   language: zh
@@ -105,7 +110,7 @@ theme:
     - search.share #搜索分享按钮
 
 extra:
-  homepage: http://47.115.211.254:8000
+  homepage: http://note.colemak.top
   generator: false
   social:
     - icon: fontawesome/brands/github

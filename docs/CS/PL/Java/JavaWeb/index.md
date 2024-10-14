@@ -4,7 +4,7 @@ comments: true
 
 # Java Web 基础
 
-Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言的应用程序开发平台，用于开发和部署大型分布式多层架构的企业应用。Java EE 是 Java SE 的扩展，提供了一组 API 和运行时环境，用于构建、部署和管理企业级应用程序。2017 年的 9 月Oracle将`Java EE` 捐赠给 Eclipse 基金会，由于Oracle持有Java商标原因，Eclipse基金于2018年3月将`Java EE`更名为[Jakarta EE](https://jakarta.ee/)。
+Java EE（Java Platform, Enterprise Edition）是一套基于 Java 编程语言的应用程序开发平台，用于开发和部署大型分布式多层架构的企业应用。Java EE 是 Java SE 的扩展，提供了一组 API 和运行时环境，用于构建、部署和管理企业级应用程序。2017 年的 9 月Oracle将`Java EE`捐赠给 Eclipse 基金会，由于Oracle持有Java商标原因，Eclipse基金于2018年3月将`Java EE`更名为[Jakarta EE](https://jakarta.ee/)。
 
 [Java EE Wiki](https://en.wikipedia.org/wiki/Jakarta_EE)
 
